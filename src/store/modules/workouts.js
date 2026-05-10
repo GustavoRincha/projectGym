@@ -1,4 +1,5 @@
 import { supabase } from '@/plugins/supabase';
+import { syncService } from '@/services/syncService';
 
 export default {
   namespaced: true,
@@ -86,127 +87,52 @@ export default {
       }
     },
 
-    async addRoutine({ commit, dispatch }, routine) {
-      try {
-        const { exercises, ...routineData } = routine;
-        
-        // Insert routine
-        const { data: newRoutine, error: routineError } = await supabase
-          .from('routines')
-          .insert([{
-            name: routineData.name,
-            objective: routineData.objective,
-            split: routineData.split,
-            days_of_week: routineData.daysOfWeek
-          }])
-          .select()
-          .single();
-          
-        if (routineError) throw routineError;
+    async addRoutine({ commit }, routine) {
+      // 1. Optimistic UI: Gerar ID localmente e atualizar estado
+      const newRoutineId = crypto.randomUUID();
+      const routineToSave = {
+        ...routine,
+        id: newRoutineId,
+      };
 
-        // Insert exercises
-        if (exercises && exercises.length > 0) {
-          const exercisesToInsert = exercises.map(ex => ({
-            routine_id: newRoutine.id,
-            name: ex.name,
-            machine: ex.machine,
-            sets_min: ex.setsMin,
-            sets_max: ex.setsMax,
-            reps_min: ex.repsMin,
-            reps_max: ex.repsMax,
-            failure_sets: ex.failureSets,
-            weight: ex.weight,
-            progression_type: ex.progressionType,
-            progression_value: ex.progressionValue,
-            progression_frequency: ex.progressionFrequency,
-            progression_per_set: ex.progressionPerSet
-          }));
+      // Commitar imediatamente para a tela já mostrar (sem esperar internet)
+      commit('ADD_ROUTINE', routineToSave);
 
-          const { error: exercisesError } = await supabase
-            .from('exercises')
-            .insert(exercisesToInsert);
+      // 2. Formatar payload para a fila de sincronização
+      const { exercises, ...routineData } = routineToSave;
+      const payload = {
+        ...routineData,
+        exercises: exercises ? exercises.map(ex => ({ ...ex, id: crypto.randomUUID(), routine_id: newRoutineId })) : []
+      };
 
-          if (exercisesError) throw exercisesError;
-        }
-
-        // Refresh routines to get complete data with IDs
-        await dispatch('fetchRoutines');
-      } catch (error) {
-        console.error('Error adding routine:', error);
-        throw error;
-      }
+      // 3. Adicionar à fila e tentar processar
+      syncService.addToQueue('ADD_ROUTINE', payload);
+      syncService.processQueue();
     },
 
-    async updateRoutine({ commit, dispatch }, routine) {
-       try {
-         const { exercises, ...routineData } = routine;
+    async updateRoutine({ commit }, routine) {
+       // 1. Optimistic UI
+       commit('UPDATE_ROUTINE', routine);
 
-         const { error: routineError } = await supabase
-           .from('routines')
-           .update({
-             name: routineData.name,
-             objective: routineData.objective,
-             split: routineData.split,
-             days_of_week: routineData.daysOfWeek
-           })
-           .eq('id', routine.id);
-           
-         if (routineError) throw routineError;
+       // 2. Formatar payload
+       const { exercises, ...routineData } = routine;
+       const payload = {
+         ...routineData,
+         exercises: exercises || []
+       };
 
-         // Delete existing exercises
-         const { error: deleteError } = await supabase
-           .from('exercises')
-           .delete()
-           .eq('routine_id', routine.id);
-
-         if (deleteError) throw deleteError;
-
-         // Insert new exercises
-         if (exercises && exercises.length > 0) {
-           const exercisesToInsert = exercises.map(ex => ({
-             routine_id: routine.id,
-             name: ex.name,
-             machine: ex.machine,
-             sets_min: ex.setsMin,
-             sets_max: ex.setsMax,
-             reps_min: ex.repsMin,
-             reps_max: ex.repsMax,
-             failure_sets: ex.failureSets,
-             weight: ex.weight,
-             progression_type: ex.progressionType,
-             progression_value: ex.progressionValue,
-             progression_frequency: ex.progressionFrequency,
-             progression_per_set: ex.progressionPerSet
-           }));
-
-           const { error: exercisesError } = await supabase
-             .from('exercises')
-             .insert(exercisesToInsert);
-
-           if (exercisesError) throw exercisesError;
-         }
-
-         await dispatch('fetchRoutines');
-       } catch (error) {
-         console.error('Error updating routine:', error);
-         throw error;
-       }
+       // 3. Adicionar à fila e processar
+       syncService.addToQueue('UPDATE_ROUTINE', payload);
+       syncService.processQueue();
     },
 
-    async deleteRoutine({ commit, dispatch }, id) {
-      try {
-        const { error } = await supabase
-          .from('routines')
-          .delete()
-          .eq('id', id);
-          
-        if (error) throw error;
-        
-        commit('DELETE_ROUTINE', id);
-      } catch (error) {
-        console.error('Error deleting routine:', error);
-        throw error;
-      }
+    async deleteRoutine({ commit }, id) {
+      // 1. Optimistic UI
+      commit('DELETE_ROUTINE', id);
+
+      // 2. Fila
+      syncService.addToQueue('DELETE_ROUTINE', { id });
+      syncService.processQueue();
     }
   }
 };

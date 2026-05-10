@@ -6,6 +6,11 @@
         Gym Track
       </v-app-bar-title>
       <v-spacer></v-spacer>
+      
+      <v-chip v-if="!isOnline" color="error" size="small" variant="flat" prepend-icon="mdi-wifi-strength-off-outline" class="mr-2 font-weight-bold">
+        Offline
+      </v-chip>
+
       <v-btn icon @click="logout">
         <v-icon>mdi-logout</v-icon>
       </v-btn>
@@ -42,14 +47,24 @@
 </template>
 
 <script setup>
-import { onMounted, computed, watch } from 'vue';
+import { onMounted, onUnmounted, computed, watch, ref } from 'vue';
 import { useStore } from 'vuex';
 import { useRouter } from 'vue-router';
+import { syncService } from '@/services/syncService';
 
 const store = useStore();
 const router = useRouter();
 
 const isAuthenticated = computed(() => store.getters['auth/isAuthenticated']);
+const isOnline = ref(navigator.onLine);
+
+const updateOnlineStatus = () => {
+  isOnline.value = navigator.onLine;
+  if (isOnline.value) {
+    // Quando a internet volta, tenta processar a fila
+    syncService.processQueue();
+  }
+};
 
 const fetchUserWorkouts = () => {
   if (isAuthenticated.value) {
@@ -58,7 +73,18 @@ const fetchUserWorkouts = () => {
 };
 
 onMounted(() => {
+  window.addEventListener('online', updateOnlineStatus);
+  window.addEventListener('offline', updateOnlineStatus);
+  
+  // Tentar processar a fila assim que abre o app (se tiver internet)
+  updateOnlineStatus();
+
   fetchUserWorkouts();
+});
+
+onUnmounted(() => {
+  window.removeEventListener('online', updateOnlineStatus);
+  window.removeEventListener('offline', updateOnlineStatus);
 });
 
 watch(isAuthenticated, (newVal) => {
