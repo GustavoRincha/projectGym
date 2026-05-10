@@ -101,13 +101,24 @@
 
             <!-- Séries -->
             <v-row dense>
-              <v-col cols="4">
+              <v-col cols="6">
                 <v-text-field
-                  v-model.number="ex.sets"
-                  label="Séries"
+                  v-model.number="ex.setsMin"
+                  label="Séries (Mín)"
                   type="number"
                   variant="outlined"
                   density="compact"
+                  :min="1"
+                ></v-text-field>
+              </v-col>
+              <v-col cols="6">
+                <v-text-field
+                  v-model.number="ex.setsMax"
+                  label="Séries (Máx)"
+                  type="number"
+                  variant="outlined"
+                  density="compact"
+                  :min="ex.setsMin"
                 ></v-text-field>
               </v-col>
             </v-row>
@@ -142,7 +153,7 @@
               <!-- Séries até a falha -->
               <div class="mt-1">
                 <label class="text-caption text-medium-emphasis d-block mb-1">
-                  Séries até a falha (das {{ ex.sets }} séries)
+                  Séries até a falha (das {{ ex.setsMax }} séries)
                 </label>
                 <v-chip-group
                   v-model="ex.failureSets"
@@ -152,12 +163,12 @@
                 >
                   <v-chip :value="0" size="small">Nenhuma</v-chip>
                   <v-chip
-                    v-for="n in ex.sets"
+                    v-for="n in ex.setsMax"
                     :key="n"
                     :value="n"
                     size="small"
                   >
-                    {{ n === ex.sets ? `${n} (Todas)` : `Última${n > 1 ? 's ' + n : ''}` }}
+                    {{ n === ex.setsMax ? `${n} (Todas)` : `Última${n > 1 ? 's ' + n : ''}` }}
                   </v-chip>
                 </v-chip-group>
                 <v-alert
@@ -167,7 +178,7 @@
                   variant="tonal"
                   class="mt-2 text-body-2"
                 >
-                  <span v-if="ex.failureSets === ex.sets">Todas as {{ ex.sets }} séries serão até a falha muscular.</span>
+                  <span v-if="ex.failureSets === ex.setsMax">Todas as {{ ex.setsMax }} séries serão até a falha muscular.</span>
                   <span v-else>
                     {{ ex.failureSets === 1 ? 'A última série' : `As últimas ${ex.failureSets} séries` }} serão até a falha muscular, as restantes com {{ ex.repsMin }}–{{ ex.repsMax }} reps.
                   </span>
@@ -223,6 +234,22 @@
                     variant="outlined"
                     density="compact"
                   ></v-select>
+                </v-col>
+              </v-row>
+
+              <v-row dense class="mt-2">
+                <v-col cols="12">
+                  <v-text-field
+                    v-model.number="ex.progressionPerSet"
+                    label="Aumento por Série (kg)"
+                    type="number"
+                    variant="outlined"
+                    density="compact"
+                    hint="Aumento de carga entre cada série de um mesmo exercício. Ex: 2kg por série"
+                    persistent-hint
+                    :min="0"
+                    :step="0.5"
+                  ></v-text-field>
                 </v-col>
               </v-row>
 
@@ -325,7 +352,8 @@ const addExercise = () => {
     id: newId,
     name: '',
     machine: '',
-    sets: 3,
+    setsMin: 3,
+    setsMax: 4,
     // Campos de reps
     repsMin: 8,
     repsMax: 12,
@@ -335,6 +363,7 @@ const addExercise = () => {
     progressionType: 'fixed',
     progressionValue: 2.5,
     progressionFrequency: 'weekly',
+    progressionPerSet: 0,
   });
 
   // Auto-abre o painel do exercício recém-adicionado

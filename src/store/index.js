@@ -1,4 +1,5 @@
 import { createStore } from 'vuex';
+import auth from './modules/auth';
 import workouts from './modules/workouts';
 import history from './modules/history';
 import goals from './modules/goals';
@@ -19,12 +20,16 @@ const localStoragePlugin = store => {
 
   // Subscribe to mutations to save state
   store.subscribe((mutation, state) => {
-    localStorage.setItem('gymtrack_state', JSON.stringify(state));
+    // We shouldn't save auth session here, let supabase handle it
+    const stateToSave = { ...state };
+    delete stateToSave.auth; 
+    localStorage.setItem('gymtrack_state', JSON.stringify(stateToSave));
   });
 };
 
 export default createStore({
   modules: {
+    auth,
     workouts,
     history,
     goals,

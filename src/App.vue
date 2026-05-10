@@ -1,10 +1,14 @@
 <template>
   <v-app>
-    <v-app-bar color="background" elevation="0" border>
+    <v-app-bar v-if="isAuthenticated" color="background" elevation="0" border>
       <v-app-bar-title class="text-primary font-weight-bold">
         <v-icon icon="mdi-dumbbell" class="mr-2"></v-icon>
         Gym Track
       </v-app-bar-title>
+      <v-spacer></v-spacer>
+      <v-btn icon @click="logout">
+        <v-icon>mdi-logout</v-icon>
+      </v-btn>
     </v-app-bar>
 
     <v-main class="bg-background">
@@ -13,7 +17,7 @@
       </v-container>
     </v-main>
 
-    <v-bottom-navigation bg-color="surface" color="primary" grow shift app>
+    <v-bottom-navigation v-if="isAuthenticated" bg-color="surface" color="primary" grow shift app>
       <v-btn to="/" value="home">
         <v-icon>mdi-home</v-icon>
         <span>Início</span>
@@ -38,7 +42,35 @@
 </template>
 
 <script setup>
-// Main Application Component
+import { onMounted, computed, watch } from 'vue';
+import { useStore } from 'vuex';
+import { useRouter } from 'vue-router';
+
+const store = useStore();
+const router = useRouter();
+
+const isAuthenticated = computed(() => store.getters['auth/isAuthenticated']);
+
+const fetchUserWorkouts = () => {
+  if (isAuthenticated.value) {
+    store.dispatch('workouts/fetchRoutines');
+  }
+};
+
+onMounted(() => {
+  fetchUserWorkouts();
+});
+
+watch(isAuthenticated, (newVal) => {
+  if (newVal) {
+    fetchUserWorkouts();
+  }
+});
+
+const logout = async () => {
+  await store.dispatch('auth/logout');
+  router.push('/login');
+};
 </script>
 
 <style>

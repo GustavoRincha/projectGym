@@ -4,10 +4,17 @@ import router from './router'
 import store from './store'
 import vuetify from './plugins/vuetify'
 
-const app = createApp(App)
+const initApp = async () => {
+  // Inicializa a autenticação antes de montar o app para o router saber se o usuário está logado
+  await store.dispatch('auth/initializeAuth');
 
-app.use(router)
-app.use(store)
-app.use(vuetify)
+  const app = createApp(App)
 
-app.mount('#app')
+  app.use(router)
+  app.use(store)
+  app.use(vuetify)
+
+  app.mount('#app')
+}
+
+initApp();
