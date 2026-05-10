@@ -56,16 +56,29 @@ export default {
       });
     },
 
-    async register({ commit }, { email, password, name }) {
+    async register({ commit }, { email, password, name, username }) {
       commit('SET_LOADING', true);
       commit('SET_ERROR', null);
       try {
+        // 1. Checar se o username já existe no banco
+        const { data: userExists, error: checkError } = await supabase.rpc('check_username_exists', { p_username: username });
+        
+        if (checkError) {
+          console.error("RPC Check Error:", checkError);
+          // Se der erro porque a função ainda não foi criada no banco, você pode avisar o usuário ou deixar passar.
+          // Por garantia, se der erro de RPC, deixamos passar e o Supabase lida.
+        } else if (userExists) {
+          throw new Error('Este nome de usuário já está em uso.');
+        }
+
+        // 2. Criar a conta
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: {
               name,
+              username // Salva o username nos metadados
             }
           }
         });
@@ -85,14 +98,32 @@ export default {
       }
     },
 
-    async login({ commit }, { email, password }) {
+    async login({ commit }, { identifier, password }) {
       commit('SET_LOADING', true);
       commit('SET_ERROR', null);
       try {
+        let emailToLogin = identifier;
+
+        // Se não tiver @, é porque digitou um nome de usuário. Precisamos descobrir o e-mail.
+        if (!identifier.includes('@')) {
+          const { data: resolvedEmail, error: rpcError } = await supabase.rpc('get_user_email', { p_username: identifier });
+          
+          if (rpcError) {
+            console.error("RPC Get Email Error:", rpcError);
+          }
+
+          if (resolvedEmail) {
+            emailToLogin = resolvedEmail;
+          } else {
+            throw new Error('Usuário não encontrado.');
+          }
+        }
+
         const { data, error } = await supabase.auth.signInWithPassword({
-          email,
+          email: emailToLogin,
           password,
         });
+        
         if (error) throw error;
         
         commit('SET_SESSION', data.session);

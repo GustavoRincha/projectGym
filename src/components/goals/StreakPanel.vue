@@ -18,12 +18,12 @@
         </div>
       </div>
 
-      <!-- Mini calendar for the last 14 days -->
+      <!-- Mini calendar for the current week -->
       <div class="pa-3">
-        <div class="text-caption text-medium-emphasis mb-2">Últimos 14 dias</div>
+        <div class="text-caption text-medium-emphasis mb-2">Esta Semana</div>
         <div class="mini-calendar">
           <div
-            v-for="day in last14Days"
+            v-for="day in currentWeekDays"
             :key="day.key"
             class="day-dot"
             :class="{ 'day-dot--active': day.hasSession, 'day-dot--today': day.isToday }"
@@ -156,17 +156,22 @@ const weekStreak = computed(() => {
 
 // ── Mini Calendar ──────────────────────────────────────────────────────
 const DAYS_SHORT = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
-const last14Days = computed(() => {
+const currentWeekDays = computed(() => {
   const result = [];
   const today = new Date();
-  for (let i = 13; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
+  
+  // Encontrar o Domingo desta semana
+  const startOfWeek = new Date(today);
+  startOfWeek.setDate(today.getDate() - today.getDay());
+  
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(startOfWeek);
+    d.setDate(startOfWeek.getDate() + i);
     result.push({
       key:        dateKey(d),
       label:      DAYS_SHORT[d.getDay()],
       hasSession: sessionDateSet.value.has(dateKey(d)),
-      isToday:    i === 0,
+      isToday:    dateKey(d) === dateKey(today),
     });
   }
   return result;

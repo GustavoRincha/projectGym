@@ -27,7 +27,26 @@
           class="mb-4"
         ></v-text-field>
 
+        <!-- Campo Nome de Usuário (Apenas Cadastro) -->
         <v-text-field
+          v-if="!isLogin"
+          v-model="username"
+          label="Nome de Usuário"
+          type="text"
+          variant="outlined"
+          prepend-inner-icon="mdi-account-badge-outline"
+          :rules="[
+            v => !!v || 'Usuário é obrigatório',
+            v => /^[a-zA-Z0-9_]+$/.test(v) || 'Apenas letras, números e sublinhado (_)',
+            v => v.length >= 3 || 'Mínimo de 3 caracteres'
+          ]"
+          color="primary"
+          class="mb-4"
+        ></v-text-field>
+
+        <!-- Campo E-mail (Apenas Cadastro) -->
+        <v-text-field
+          v-if="!isLogin"
           v-model="email"
           label="E-mail"
           type="email"
@@ -36,6 +55,22 @@
           :rules="[
             v => !!v || 'E-mail é obrigatório',
             v => /.+@.+\..+/.test(v) || 'E-mail deve ser válido'
+          ]"
+          color="primary"
+          class="mb-4"
+        ></v-text-field>
+
+        <!-- Campo Login (Usuário ou E-mail) -->
+        <v-text-field
+          v-if="isLogin"
+          v-model="identifier"
+          label="Usuário ou E-mail"
+          type="text"
+          variant="outlined"
+          prepend-inner-icon="mdi-account-circle-outline"
+          :rules="[
+            v => !!v || 'Usuário ou e-mail é obrigatório',
+            v => v.length >= 3 || 'Mínimo de 3 caracteres'
           ]"
           color="primary"
           class="mb-4"
@@ -126,7 +161,9 @@ const router = useRouter();
 const isLogin = ref(true);
 const isFormValid = ref(false);
 const name = ref('');
+const username = ref('');
 const email = ref('');
+const identifier = ref('');
 const password = ref('');
 const verifyPassword = ref('');
 const showPassword = ref(false);
@@ -141,6 +178,7 @@ const toggleMode = () => {
   // Limpar campos de cadastro ao alternar
   if (isLogin.value) {
     name.value = '';
+    username.value = '';
     verifyPassword.value = '';
   }
 };
@@ -149,9 +187,12 @@ const handleSubmit = async () => {
   if (!isFormValid.value) return;
 
   const action = isLogin.value ? 'auth/login' : 'auth/register';
+
+  // No login, envia o identificador (pode ser o e-mail ou o username).
+  // No cadastro, envia email e username separados.
   const payload = isLogin.value 
-    ? { email: email.value, password: password.value }
-    : { email: email.value, password: password.value, name: name.value };
+    ? { identifier: identifier.value, password: password.value }
+    : { email: email.value, password: password.value, name: name.value, username: username.value };
   
   try {
     await store.dispatch(action, payload);
