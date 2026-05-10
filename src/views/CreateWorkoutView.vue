@@ -272,6 +272,26 @@
     <v-btn color="primary" block size="large" rounded="pill" @click="saveWorkout">
       {{ isEditMode ? 'Atualizar Treino' : 'Salvar Treino' }}
     </v-btn>
+
+    <!-- Floating Action Button (FAB) para Adicionar Exercício -->
+    <v-btn
+      icon="mdi-plus"
+      color="secondary"
+      size="large"
+      elevation="8"
+      position="fixed"
+      location="bottom right"
+      style="bottom: 80px; right: 24px; z-index: 99;"
+      @click="addExercise"
+    ></v-btn>
+
+    <!-- Snackbar para alertas -->
+    <v-snackbar v-model="snackbar.show" :color="snackbar.color" timeout="3000">
+      {{ snackbar.text }}
+      <template v-slot:actions>
+        <v-btn variant="text" @click="snackbar.show = false">Fechar</v-btn>
+      </template>
+    </v-snackbar>
   </div>
 </template>
 
@@ -376,6 +396,14 @@ const removeExercise = (index) => {
   workout.exercises.splice(index, 1);
 };
 
+// Snackbar state
+const snackbar = reactive({ show: false, text: '', color: 'success' });
+const showMessage = (text, color = 'success') => {
+  snackbar.text = text;
+  snackbar.color = color;
+  snackbar.show = true;
+};
+
 // Gera uma frase resumindo a progressão configurada
 const progressionSummary = (ex) => {
   const freqMap = {
@@ -399,11 +427,11 @@ const progressionSummary = (ex) => {
 
 const saveWorkout = () => {
   if (!workout.name) {
-    alert('Por favor, informe o nome do treino.');
+    showMessage('Por favor, informe o nome do treino.', 'error');
     return;
   }
   if (workout.exercises.length === 0) {
-    alert('Adicione pelo menos um exercício.');
+    showMessage('Adicione pelo menos um exercício.', 'error');
     return;
   }
   
@@ -413,11 +441,14 @@ const saveWorkout = () => {
   if (isEditMode.value) {
     // Update existing — keep the original id
     store.dispatch('workouts/updateRoutine', { ...routineData, id: editId });
-    alert('Treino atualizado com sucesso!');
+    showMessage('Treino atualizado com sucesso!', 'success');
   } else {
     store.dispatch('workouts/addRoutine', routineData);
-    alert('Treino salvo com sucesso!');
+    showMessage('Treino salvo com sucesso!', 'success');
   }
-  router.push('/workouts');
+  
+  setTimeout(() => {
+    router.push('/workouts');
+  }, 1000);
 };
 </script>

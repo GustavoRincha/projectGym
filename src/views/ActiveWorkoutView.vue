@@ -115,6 +115,26 @@
         Finalizar Treino
       </v-btn>
     </div>
+    <!-- Cancel Dialog -->
+    <v-dialog v-model="cancelDialog" max-width="400">
+      <v-card color="surface">
+        <v-card-title class="text-h6 pt-4 px-4">Cancelar Treino?</v-card-title>
+        <v-card-text class="px-4 text-medium-emphasis">
+          Deseja realmente cancelar este treino? O progresso não será salvo.
+        </v-card-text>
+        <v-card-actions class="px-4 pb-4">
+          <v-spacer></v-spacer>
+          <v-btn variant="text" @click="cancelDialog = false">Voltar</v-btn>
+          <v-btn color="error" variant="flat" @click="confirmCancel">Sim, Cancelar</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Success Snackbar -->
+    <v-snackbar v-model="snackbar.show" :color="snackbar.color" timeout="3000" location="top">
+      <v-icon icon="mdi-check-circle" class="mr-2"></v-icon>
+      {{ snackbar.text }}
+    </v-snackbar>
   </div>
 </template>
 
@@ -181,10 +201,23 @@ const isFailureSet = (ex, setIndex) => {
   return setIndex > ex.sets - ex.failureSets;
 };
 
+// UI State
+const cancelDialog = ref(false);
+const snackbar = reactive({ show: false, text: '', color: 'success' });
+
+const showMessage = (text, color = 'success') => {
+  snackbar.text = text;
+  snackbar.color = color;
+  snackbar.show = true;
+};
+
 const cancelWorkout = () => {
-  if (confirm('Deseja realmente cancelar este treino? O progresso não será salvo.')) {
-    router.push('/');
-  }
+  cancelDialog.value = true;
+};
+
+const confirmCancel = () => {
+  cancelDialog.value = false;
+  router.push('/');
 };
 
 const finishWorkout = async () => {
@@ -221,7 +254,10 @@ const finishWorkout = async () => {
   // Check and unlock badges
   await store.dispatch('gamification/checkAndUnlockBadges', { sessionData, streak });
 
-  alert('✅ Treino finalizado!\n+50 XP ganhos!');
-  router.push('/history');
+  showMessage('Treino finalizado! +50 XP ganhos!', 'success');
+  
+  setTimeout(() => {
+    router.push('/history');
+  }, 1500);
 };
 </script>
