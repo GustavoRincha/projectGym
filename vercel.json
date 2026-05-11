@@ -12,7 +12,7 @@
   ],
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/((?!assets|fonts|sw\\.js|workbox-|manifest\\.webmanifest|registerSW\\.js|robots\\.txt|pwa-).*)",
       "destination": "/index.html"
     }
   ]
