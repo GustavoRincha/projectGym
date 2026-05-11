@@ -32,7 +32,12 @@ export default defineConfig({
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2,ttf,eot}']
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2,ttf,eot}'],
+        maximumFileSizeToCacheInBytes: 5000000
+      },
+      devOptions: {
+        enabled: true,
+        type: 'module'
       }
     })
   ],
