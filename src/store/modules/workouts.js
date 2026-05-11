@@ -107,7 +107,7 @@ export default {
         split: routineToSave.split,
         days_of_week: routineToSave.daysOfWeek || [],
         exercises: (routineToSave.exercises || []).map(ex => ({
-          id: crypto.randomUUID(),
+          // Não enviamos o 'id' do exercício: deixamos o banco de dados (Supabase) gerar automaticamente
           routine_id: newRoutineId,
           name: ex.name,
           machine: ex.machine,
@@ -142,7 +142,7 @@ export default {
         split: routine.split,
         days_of_week: routine.daysOfWeek || [],
         exercises: (routine.exercises || []).map(ex => ({
-          id: ex.id || crypto.randomUUID(),
+          // Não enviamos o 'id' do exercício: ao atualizar, nós apagamos os antigos e recriamos novos, logo o banco gera novos IDs
           routine_id: routine.id,
           name: ex.name,
           machine: ex.machine,
