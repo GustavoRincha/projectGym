@@ -1,3 +1,6 @@
+import { supabase } from '@/plugins/supabase';
+import { syncService } from '@/services/syncService';
+
 // All available badges definition (exported for use in components)
 export const ALL_BADGES = [
   { id: 'first_workout', name: 'Primeiro Treino', icon: '🏋️', description: 'Finalize seu primeiro treino', rarity: 'common' },
@@ -67,6 +70,10 @@ export default {
     },
   },
   mutations: {
+    SET_GAMIFICATION(state, payload) {
+      if (payload.xp !== undefined) state.xp = payload.xp;
+      if (payload.unlocked_badges !== undefined) state.unlockedBadges = payload.unlocked_badges;
+    },
     ADD_XP(state, amount) {
       state.xp += amount;
     },
@@ -77,11 +84,29 @@ export default {
     },
   },
   actions: {
-    addXp({ commit }, amount) {
-      commit('ADD_XP', amount);
+    async fetchGamification({ commit, rootState }) {
+      const userId = rootState.auth?.user?.id;
+      if (!userId) return;
+
+      const { data } = await supabase.from('user_gamification').select('*').eq('user_id', userId).single();
+      if (data) {
+        commit('SET_GAMIFICATION', { xp: data.xp, unlocked_badges: data.unlocked_badges });
+      }
     },
-    // Called after every workout session is saved
-    checkAndUnlockBadges({ commit, state, rootState }, { sessionData, streak }) {
+
+    addXp({ commit, rootState, state }, amount) {
+      commit('ADD_XP', amount);
+      syncService.addToQueue('UPDATE_GAMIFICATION', { user_id: rootState.auth?.user?.id, xp: state.xp });
+      syncService.processQueue();
+    },
+    
+    unlockBadge({ commit, rootState, state }, badgeId) {
+      commit('UNLOCK_BADGE', badgeId);
+      syncService.addToQueue('UPDATE_GAMIFICATION', { user_id: rootState.auth?.user?.id, unlocked_badges: state.unlockedBadges });
+      syncService.processQueue();
+    },
+
+    checkAndUnlockBadges({ commit, state, rootState, dispatch }, { sessionData, streak }) {
       const sessions = rootState.history?.sessions || [];
       const hour = new Date(sessionData.date).getHours();
 
@@ -109,8 +134,8 @@ export default {
 
       for (const [badgeId, isEarned] of Object.entries(conditions)) {
         if (isEarned && !state.unlockedBadges.some(b => b.id === badgeId)) {
-          commit('UNLOCK_BADGE', badgeId);
-          commit('ADD_XP', 150); // Badge XP bonus
+          dispatch('unlockBadge', badgeId);
+          dispatch('addXp', 150); // Badge XP bonus
         }
       }
     },

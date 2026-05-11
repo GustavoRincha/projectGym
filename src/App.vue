@@ -40,7 +40,7 @@
       </v-container>
     </v-main>
 
-    <v-bottom-navigation v-if="isAuthenticated" bg-color="surface" color="primary" grow shift app>
+    <v-bottom-navigation v-if="showBottomNav" bg-color="surface" color="primary" grow shift app>
       <v-btn to="/" value="home">
         <v-icon>mdi-home</v-icon>
         <span>Início</span>
@@ -77,6 +77,10 @@ const route = useRoute();
 const isAuthenticated = computed(() => store.getters['auth/isAuthenticated']);
 const isOnline = ref(navigator.onLine);
 
+const showBottomNav = computed(() => {
+  return isAuthenticated.value && !['CreateWorkout', 'EditWorkout'].includes(route.name);
+});
+
 const updateOnlineStatus = () => {
   isOnline.value = navigator.onLine;
   if (isOnline.value) {
@@ -85,9 +89,13 @@ const updateOnlineStatus = () => {
   }
 };
 
-const fetchUserWorkouts = () => {
+const fetchAllData = () => {
   if (isAuthenticated.value) {
     store.dispatch('workouts/fetchRoutines');
+    store.dispatch('history/fetchHistory');
+    store.dispatch('body/fetchBody');
+    store.dispatch('goals/fetchGoals');
+    store.dispatch('gamification/fetchGamification');
   }
 };
 
@@ -98,7 +106,7 @@ onMounted(() => {
   // Tentar processar a fila assim que abre o app (se tiver internet)
   updateOnlineStatus();
 
-  fetchUserWorkouts();
+  fetchAllData();
 });
 
 onUnmounted(() => {
@@ -111,7 +119,7 @@ onUnmounted(() => {
 
 watch(isAuthenticated, (newVal) => {
   if (newVal) {
-    fetchUserWorkouts();
+    fetchAllData();
   }
 });
 

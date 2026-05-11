@@ -1,3 +1,6 @@
+import { supabase } from '@/plugins/supabase';
+import { syncService } from '@/services/syncService';
+
 export default {
   namespaced: true,
   state: {
@@ -47,23 +50,72 @@ export default {
     },
   },
   actions: {
-    logWeight({ commit }, { date, value }) {
-      commit('LOG_WEIGHT', { date: date || new Date().toISOString(), value });
+    async fetchBody({ commit, rootState }) {
+      const userId = rootState.auth?.user?.id;
+      if (!userId) return;
+
+      // 1. Fetch Weight Logs
+      const { data: weightData } = await supabase.from('weight_logs').select('*').eq('user_id', userId).order('date', { ascending: true });
+      if (weightData) {
+        weightData.forEach(d => commit('LOG_WEIGHT', { date: d.date, value: d.value, skipSync: true }));
+      }
+
+      // 2. Fetch BF Logs
+      const { data: bfData } = await supabase.from('bf_logs').select('*').eq('user_id', userId).order('date', { ascending: true });
+      if (bfData) {
+        bfData.forEach(d => commit('LOG_BF', { date: d.date, value: d.value, skipSync: true }));
+      }
+
+      // 3. Fetch Measurements
+      const { data: measData } = await supabase.from('measurements').select('*').eq('user_id', userId).order('date', { ascending: true });
+      if (measData) {
+        measData.forEach(d => commit('LOG_MEASUREMENT', { ...d, skipSync: true }));
+      }
+
+      // 4. Fetch Goals (from user_goals)
+      const { data: goalsData } = await supabase.from('user_goals').select('body_goals').eq('user_id', userId).single();
+      if (goalsData && goalsData.body_goals) {
+        commit('SET_GOALS', { ...goalsData.body_goals, skipSync: true });
+      }
     },
-    logBf({ commit }, { date, value }) {
-      commit('LOG_BF', { date: date || new Date().toISOString(), value });
+
+    logWeight({ commit, rootState }, { date, value }) {
+      const d = date || new Date().toISOString();
+      commit('LOG_WEIGHT', { date: d, value });
+      syncService.addToQueue('LOG_WEIGHT', { user_id: rootState.auth?.user?.id, date: d, value });
+      syncService.processQueue();
     },
-    logMeasurement({ commit }, data) {
-      commit('LOG_MEASUREMENT', { ...data, date: data.date || new Date().toISOString() });
+    logBf({ commit, rootState }, { date, value }) {
+      const d = date || new Date().toISOString();
+      commit('LOG_BF', { date: d, value });
+      syncService.addToQueue('LOG_BF', { user_id: rootState.auth?.user?.id, date: d, value });
+      syncService.processQueue();
     },
-    setGoals({ commit }, goals) {
+    logMeasurement({ commit, rootState }, data) {
+      const d = data.date || new Date().toISOString();
+      commit('LOG_MEASUREMENT', { ...data, date: d });
+      syncService.addToQueue('LOG_MEASUREMENT', { 
+        user_id: rootState.auth?.user?.id, 
+        date: d, 
+        arm: data.arm, waist: data.waist, chest: data.chest, thigh: data.thigh, hip: data.hip 
+      });
+      syncService.processQueue();
+    },
+    setGoals({ commit, rootState, state }, goals) {
       commit('SET_GOALS', goals);
+      syncService.addToQueue('UPDATE_GOALS', { 
+        user_id: rootState.auth?.user?.id, 
+        body_goals: state.goals 
+      });
+      syncService.processQueue();
     },
     deleteWeight({ commit }, index) {
       commit('DELETE_WEIGHT', index);
+      // Fila de exclusão pode ser implementada depois se necessário
     },
     deleteBf({ commit }, index) {
       commit('DELETE_BF', index);
+      // Fila de exclusão pode ser implementada depois se necessário
     },
   },
 };

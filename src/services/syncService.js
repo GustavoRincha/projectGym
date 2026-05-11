@@ -139,6 +139,54 @@ export const syncService = {
         break;
       }
 
+      case 'ADD_SESSION': {
+        const { error } = await supabase.from('sessions').insert([payload]);
+        if (error) throw error;
+        break;
+      }
+
+      case 'LOG_WEIGHT': {
+        const { error } = await supabase.from('weight_logs').insert([payload]);
+        if (error) throw error;
+        break;
+      }
+
+      case 'LOG_BF': {
+        const { error } = await supabase.from('bf_logs').insert([payload]);
+        if (error) throw error;
+        break;
+      }
+
+      case 'LOG_MEASUREMENT': {
+        const { error } = await supabase.from('measurements').insert([payload]);
+        if (error) throw error;
+        break;
+      }
+
+      case 'UPDATE_GOALS': {
+        const { data } = await supabase.from('user_goals').select('user_id').eq('user_id', payload.user_id).single();
+        if (!data) {
+          const { error } = await supabase.from('user_goals').insert([payload]);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase.from('user_goals').update(payload).eq('user_id', payload.user_id);
+          if (error) throw error;
+        }
+        break;
+      }
+
+      case 'UPDATE_GAMIFICATION': {
+        const { data } = await supabase.from('user_gamification').select('user_id').eq('user_id', payload.user_id).single();
+        if (!data) {
+          const { error } = await supabase.from('user_gamification').insert([payload]);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase.from('user_gamification').update(payload).eq('user_id', payload.user_id);
+          if (error) throw error;
+        }
+        break;
+      }
+
       default:
         console.warn(`[Sync Queue] Unknown task type: ${type}`);
         // Removendo silenciosamente tarefas desconhecidas para não travar a fila

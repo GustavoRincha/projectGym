@@ -1,3 +1,6 @@
+import { supabase } from '@/plugins/supabase';
+import { syncService } from '@/services/syncService';
+
 export default {
   namespaced: true,
   state: {
@@ -19,7 +22,16 @@ export default {
     monthlyChallenge: (s) => s.monthlyChallenge,
   },
   mutations: {
+    SET_ALL_GOALS(state, goals) {
+      state.goals = goals;
+    },
     // ── Free goals ──────────────────────────────────────────
+    ADD_GOAL_FULL(state, goal) {
+      // Evita duplicatas se o ID já existir
+      if (!state.goals.find(g => g.id === goal.id)) {
+        state.goals.push(goal);
+      }
+    },
     ADD_GOAL(state, title) {
       state.goals.push({ id: Date.now().toString(), title, comments: [] });
     },
@@ -47,12 +59,64 @@ export default {
     },
   },
   actions: {
-    addGoal({ commit }, title)          { commit('ADD_GOAL', title); },
-    addComment({ commit }, payload)     { commit('ADD_COMMENT', payload); },
-    deleteGoal({ commit }, id)          { commit('DELETE_GOAL', id); },
-    addPrGoal({ commit }, goal)         { commit('ADD_PR_GOAL', goal); },
-    deletePrGoal({ commit }, id)        { commit('DELETE_PR_GOAL', id); },
-    setVolumeGoal({ commit }, payload)  { commit('SET_VOLUME_GOAL', payload); },
-    setMonthlyTarget({ commit }, target){ commit('SET_MONTHLY_TARGET', target); },
+    async fetchGoals({ commit, rootState }) {
+      const userId = rootState.auth?.user?.id;
+      if (!userId) return;
+
+      const { data } = await supabase.from('user_goals').select('*').eq('user_id', userId).single();
+      if (data) {
+        if (data.free_goals) {
+          // Mutar diretamente o array para não sobrescrever a reatividade se usarmos push no frontend
+          // Mas como não há mutation para SET_ALL_GOALS, vamos só preencher
+          data.free_goals.forEach(g => commit('ADD_GOAL_FULL', g)); // Assumindo criação de uma mutation ADD_GOAL_FULL
+        }
+        if (data.pr_goals) {
+          data.pr_goals.forEach(g => commit('ADD_PR_GOAL', { ...g, skipSync: true }));
+        }
+        if (data.volume_goal) commit('SET_VOLUME_GOAL', { ...data.volume_goal, skipSync: true });
+        if (data.monthly_target) commit('SET_MONTHLY_TARGET', data.monthly_target);
+      }
+    },
+
+    // ── Free goals ──────────────────────────────────────────
+    addGoal({ commit, rootState, state }, title) { 
+      commit('ADD_GOAL', title);
+      syncService.addToQueue('UPDATE_GOALS', { user_id: rootState.auth?.user?.id, free_goals: state.goals });
+      syncService.processQueue();
+    },
+    addComment({ commit, rootState, state }, payload) { 
+      commit('ADD_COMMENT', payload);
+      syncService.addToQueue('UPDATE_GOALS', { user_id: rootState.auth?.user?.id, free_goals: state.goals });
+      syncService.processQueue();
+    },
+    deleteGoal({ commit, rootState, state }, id) { 
+      commit('DELETE_GOAL', id);
+      syncService.addToQueue('UPDATE_GOALS', { user_id: rootState.auth?.user?.id, free_goals: state.goals });
+      syncService.processQueue();
+    },
+
+    // ── Performance / PR goals ───────────────────────────────
+    addPrGoal({ commit, rootState, state }, goal) { 
+      commit('ADD_PR_GOAL', goal);
+      syncService.addToQueue('UPDATE_GOALS', { user_id: rootState.auth?.user?.id, pr_goals: state.performanceGoals });
+      syncService.processQueue();
+    },
+    deletePrGoal({ commit, rootState, state }, id) { 
+      commit('DELETE_PR_GOAL', id);
+      syncService.addToQueue('UPDATE_GOALS', { user_id: rootState.auth?.user?.id, pr_goals: state.performanceGoals });
+      syncService.processQueue();
+    },
+
+    // ── Volume & Monthly ─────────────────────────────────────
+    setVolumeGoal({ commit, rootState, state }, payload) { 
+      commit('SET_VOLUME_GOAL', payload);
+      syncService.addToQueue('UPDATE_GOALS', { user_id: rootState.auth?.user?.id, volume_goal: state.volumeGoal });
+      syncService.processQueue();
+    },
+    setMonthlyTarget({ commit, rootState, state }, target) { 
+      commit('SET_MONTHLY_TARGET', target);
+      syncService.addToQueue('UPDATE_GOALS', { user_id: rootState.auth?.user?.id, monthly_target: state.monthlyChallenge.target });
+      syncService.processQueue();
+    },
   },
 };
