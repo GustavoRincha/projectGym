@@ -98,11 +98,29 @@ export default {
       // Commitar imediatamente para a tela já mostrar (sem esperar internet)
       commit('ADD_ROUTINE', routineToSave);
 
-      // 2. Formatar payload para a fila de sincronização
-      const { exercises, ...routineData } = routineToSave;
+      // 2. Formatar payload para a fila de sincronização (camelCase -> snake_case)
       const payload = {
-        ...routineData,
-        exercises: exercises ? exercises.map(ex => ({ ...ex, id: crypto.randomUUID(), routine_id: newRoutineId })) : []
+        id: routineToSave.id,
+        name: routineToSave.name,
+        objective: routineToSave.objective,
+        split: routineToSave.split,
+        days_of_week: routineToSave.daysOfWeek || [],
+        exercises: (routineToSave.exercises || []).map(ex => ({
+          id: crypto.randomUUID(),
+          routine_id: newRoutineId,
+          name: ex.name,
+          machine: ex.machine,
+          sets_min: ex.setsMin || ex.sets || 3,
+          sets_max: ex.setsMax || ex.sets || 4,
+          reps_min: ex.repsMin || ex.reps || 8,
+          reps_max: ex.repsMax || ex.reps || 15,
+          failure_sets: ex.failureSets || 0,
+          weight: ex.weight || 0,
+          progression_type: ex.progressionType || 'none',
+          progression_value: ex.progressionValue || 0,
+          progression_frequency: ex.progressionFrequency || 'weekly',
+          progression_per_set: ex.progressionPerSet || 0
+        }))
       };
 
       // 3. Adicionar à fila e tentar processar
@@ -111,19 +129,37 @@ export default {
     },
 
     async updateRoutine({ commit }, routine) {
-       // 1. Optimistic UI
-       commit('UPDATE_ROUTINE', routine);
+      // 1. Optimistic UI
+      commit('UPDATE_ROUTINE', routine);
 
-       // 2. Formatar payload
-       const { exercises, ...routineData } = routine;
-       const payload = {
-         ...routineData,
-         exercises: exercises || []
-       };
+      // 2. Formatar payload (camelCase -> snake_case)
+      const payload = {
+        id: routine.id,
+        name: routine.name,
+        objective: routine.objective,
+        split: routine.split,
+        days_of_week: routine.daysOfWeek || [],
+        exercises: (routine.exercises || []).map(ex => ({
+          id: ex.id || crypto.randomUUID(),
+          routine_id: routine.id,
+          name: ex.name,
+          machine: ex.machine,
+          sets_min: ex.setsMin || ex.sets || 3,
+          sets_max: ex.setsMax || ex.sets || 4,
+          reps_min: ex.repsMin || ex.reps || 8,
+          reps_max: ex.repsMax || ex.reps || 15,
+          failure_sets: ex.failureSets || 0,
+          weight: ex.weight || 0,
+          progression_type: ex.progressionType || 'none',
+          progression_value: ex.progressionValue || 0,
+          progression_frequency: ex.progressionFrequency || 'weekly',
+          progression_per_set: ex.progressionPerSet || 0
+        }))
+      };
 
-       // 3. Adicionar à fila e processar
-       syncService.addToQueue('UPDATE_ROUTINE', payload);
-       syncService.processQueue();
+      // 3. Adicionar à fila e processar
+      syncService.addToQueue('UPDATE_ROUTINE', payload);
+      syncService.processQueue();
     },
 
     async deleteRoutine({ commit }, id) {
