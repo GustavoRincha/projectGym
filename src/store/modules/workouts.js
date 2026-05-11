@@ -87,7 +87,7 @@ export default {
       }
     },
 
-    async addRoutine({ commit }, routine) {
+    async addRoutine({ commit, rootState }, routine) {
       // 1. Optimistic UI: Gerar ID localmente e atualizar estado
       const newRoutineId = crypto.randomUUID();
       const routineToSave = {
@@ -101,6 +101,7 @@ export default {
       // 2. Formatar payload para a fila de sincronização (camelCase -> snake_case)
       const payload = {
         id: routineToSave.id,
+        user_id: rootState.auth?.user?.id,
         name: routineToSave.name,
         objective: routineToSave.objective,
         split: routineToSave.split,
@@ -128,13 +129,14 @@ export default {
       syncService.processQueue();
     },
 
-    async updateRoutine({ commit }, routine) {
+    async updateRoutine({ commit, rootState }, routine) {
       // 1. Optimistic UI
       commit('UPDATE_ROUTINE', routine);
 
       // 2. Formatar payload (camelCase -> snake_case)
       const payload = {
         id: routine.id,
+        user_id: rootState.auth?.user?.id,
         name: routine.name,
         objective: routine.objective,
         split: routine.split,
