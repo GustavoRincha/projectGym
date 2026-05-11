@@ -13,7 +13,7 @@
         <v-card color="surface" elevation="2" rounded="xl" class="pa-4 border border-primary">
           <div class="d-flex align-center justify-space-between mb-4">
             <span class="text-h6 font-weight-bold text-primary">
-              <v-icon icon="mdi-star" class="mr-1"></v-icon> Treino Sugerido
+              <v-icon icon="mdi-calendar-star" class="mr-1"></v-icon> Treino do Dia
             </span>
           </div>
           
@@ -23,7 +23,7 @@
               {{ suggestedRoutine.exercises.length }} exercícios programados
             </p>
             <v-btn color="primary" block size="large" rounded="pill" @click="startWorkout(suggestedRoutine.id)">
-              Iniciar Sugerido
+              Iniciar Treino
             </v-btn>
           </div>
           <div v-else>

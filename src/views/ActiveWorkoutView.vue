@@ -30,7 +30,7 @@
                 <v-icon icon="mdi-tools" size="x-small" class="mr-1"></v-icon>{{ ex.machine }}
               </div>
               <div class="text-caption mt-1">
-                <v-chip v-if="ex.failureSets > 0 && ex.failureSets === ex.sets" size="x-small" color="secondary" class="mr-1">Todas até a Falha</v-chip>
+                <v-chip v-if="ex.failureSets > 0 && ex.failureSets === ex.setsMax" size="x-small" color="secondary" class="mr-1">Todas até a Falha</v-chip>
                 <template v-else>
                   <span class="text-primary font-weight-medium">{{ ex.repsMin }}–{{ ex.repsMax }} reps</span>
                   <v-chip v-if="ex.failureSets > 0" size="x-small" color="secondary" class="ml-1">
@@ -41,7 +41,7 @@
             </div>
             <v-spacer></v-spacer>
             <v-chip size="small" :color="isExerciseComplete(ex) ? 'success' : 'default'" class="mr-2">
-              {{ completedSetsCount(ex) }}/{{ ex.sets }}
+              {{ completedSetsCount(ex) }}/{{ ex.setsMax }}
             </v-chip>
           </v-expansion-panel-title>
           
@@ -54,7 +54,7 @@
             </v-row>
 
             <v-row
-              v-for="setIndex in ex.sets"
+              v-for="setIndex in Number(ex.setsMax || 0)"
               :key="setIndex"
               class="align-center mb-1"
               :class="{ 'failure-set-row': isFailureSet(ex, setIndex) }"
@@ -139,7 +139,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, reactive, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 
@@ -150,55 +150,60 @@ const store = useStore();
 const routineId = route.params.id;
 const routine = computed(() => store.getters['workouts/getRoutineById'](routineId));
 
-// Reactive state for the ongoing session
+// State for the ongoing session
 const sessionExercises = ref([]);
 const activePanel = ref([0]); // Open first exercise by default
-const startTime = ref(null);
-const elapsedTime = ref(0);
-let timerInterval = null;
+
+const elapsedTime = computed(() => store.getters['session/elapsedTime']);
 
 const formattedTime = computed(() => {
-  const mins = Math.floor(elapsedTime.value / 60);
-  const secs = elapsedTime.value % 60;
+  const mins = Math.floor((elapsedTime.value || 0) / 60);
+  const secs = (elapsedTime.value || 0) % 60;
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 });
 
 onMounted(() => {
-  if (routine.value) {
-    // Deep clone exercises and prep for session tracking
-    sessionExercises.value = JSON.parse(JSON.stringify(routine.value.exercises)).map(ex => {
-      // Create an array for tracking each set
-      ex.performed = Array.from({ length: ex.sets }, () => ({
-        weight: ex.weight, // default to goal weight
-        reps: ex.repsMax || parseInt(ex.reps) || 0, // default to goal reps (repsMax)
-        completed: false
-      }));
-      return ex;
-    });
+  const isActive = store.getters['session/isActive'];
+  const activeId = store.getters['session/routineId'];
 
-    startTime.value = Date.now();
-    timerInterval = setInterval(() => {
-      elapsedTime.value = Math.floor((Date.now() - startTime.value) / 1000);
-    }, 1000);
+  if (isActive) {
+    if (activeId !== routineId) {
+      alert('Você já possui um treino em andamento. Retornando ao treino ativo...');
+      router.push(`/workout/${activeId}`);
+      return;
+    }
+  } else {
+    if (routine.value) {
+      store.dispatch('session/startSession', routine.value);
+    }
+  }
+
+  // Carrega os exercícios do estado global
+  const storedExercises = store.getters['session/exercises'];
+  if (storedExercises && storedExercises.length > 0) {
+    sessionExercises.value = JSON.parse(JSON.stringify(storedExercises));
   }
 });
 
-onUnmounted(() => {
-  if (timerInterval) clearInterval(timerInterval);
-});
+// Sincroniza qualquer alteração no formulário com o estado global (para persistência no localStorage)
+watch(sessionExercises, (newVal) => {
+  if (newVal.length > 0) {
+    store.commit('session/UPDATE_ALL_EXERCISES', newVal);
+  }
+}, { deep: true });
 
 const completedSetsCount = (ex) => {
   return ex.performed.filter(s => s.completed).length;
 };
 
 const isExerciseComplete = (ex) => {
-  return completedSetsCount(ex) === ex.sets;
+  return completedSetsCount(ex) === ex.setsMax;
 };
 
 // Retorna true se a série setIndex (1-based) é uma das últimas N séries até a falha
 const isFailureSet = (ex, setIndex) => {
   if (!ex.failureSets || ex.failureSets === 0) return false;
-  return setIndex > ex.sets - ex.failureSets;
+  return setIndex > ex.setsMax - ex.failureSets;
 };
 
 // UI State
@@ -217,6 +222,7 @@ const cancelWorkout = () => {
 
 const confirmCancel = () => {
   cancelDialog.value = false;
+  store.dispatch('session/clearSession');
   router.push('/');
 };
 
@@ -253,6 +259,8 @@ const finishWorkout = async () => {
 
   // Check and unlock badges
   await store.dispatch('gamification/checkAndUnlockBadges', { sessionData, streak });
+
+  store.dispatch('session/clearSession');
 
   showMessage('Treino finalizado! +50 XP ganhos!', 'success');
   

@@ -7,6 +7,7 @@ import CreateWorkoutView from '../views/CreateWorkoutView.vue';
 import HistoryView from '../views/HistoryView.vue';
 import GoalsView from '../views/GoalsView.vue';
 import LoginView from '../views/LoginView.vue';
+import SuggestWorkoutView from '../views/SuggestWorkoutView.vue';
 
 const routes = [
   {
@@ -25,6 +26,12 @@ const routes = [
     path: '/workouts',
     name: 'Workouts',
     component: WorkoutsView,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/workout/suggest',
+    name: 'SuggestWorkout',
+    component: SuggestWorkoutView,
     meta: { requiresAuth: true }
   },
   {
@@ -66,19 +73,13 @@ const router = createRouter({
 
 // Navigation Guard
 router.beforeEach(async (to, from, next) => {
-  // Opcional: Se quiser garantir que a inicialização de auth ocorreu,
-  // isso deve ser chamado. Por agora, confiamos que o App.vue o fará ou checamos o estado.
   const isAuthenticated = store.getters['auth/isAuthenticated'];
   
-  // Se a rota requer auth e não está logado, vai pro login
   if (to.meta.requiresAuth && !isAuthenticated) {
     next('/login');
-  } 
-  // Se está logado e tenta ir pro login, vai pra home
-  else if (to.path === '/login' && isAuthenticated) {
+  } else if (to.path === '/login' && isAuthenticated) {
     next('/');
-  } 
-  else {
+  } else {
     next();
   }
 });

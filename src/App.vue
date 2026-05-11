@@ -18,6 +18,24 @@
 
     <v-main class="bg-background">
       <v-container class="pb-16" fluid>
+        <!-- Banner de Treino Ativo -->
+        <v-alert
+          v-if="isSessionActive"
+          color="success"
+          variant="flat"
+          class="mb-4 text-center font-weight-bold"
+          rounded="lg"
+          elevation="4"
+          style="cursor: pointer;"
+          @click="returnToSession"
+        >
+          <div class="d-flex align-center justify-center w-100">
+            <v-icon icon="mdi-timer-outline" class="mr-2"></v-icon>
+            Treino em Andamento: {{ formattedSessionTime }}
+            <v-icon icon="mdi-chevron-right" class="ml-2"></v-icon>
+          </div>
+        </v-alert>
+
         <router-view />
       </v-container>
     </v-main>
@@ -49,11 +67,12 @@
 <script setup>
 import { onMounted, onUnmounted, computed, watch, ref } from 'vue';
 import { useStore } from 'vuex';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import { syncService } from '@/services/syncService';
 
 const store = useStore();
 const router = useRouter();
+const route = useRoute();
 
 const isAuthenticated = computed(() => store.getters['auth/isAuthenticated']);
 const isOnline = ref(navigator.onLine);
@@ -85,6 +104,9 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('online', updateOnlineStatus);
   window.removeEventListener('offline', updateOnlineStatus);
+  if (sessionTimer) {
+    clearInterval(sessionTimer);
+  }
 });
 
 watch(isAuthenticated, (newVal) => {
@@ -92,6 +114,41 @@ watch(isAuthenticated, (newVal) => {
     fetchUserWorkouts();
   }
 });
+
+// Lógica Global do Treino em Background
+const isSessionActive = computed(() => store.getters['session/isActive']);
+const sessionTime = computed(() => store.getters['session/elapsedTime']);
+const sessionRoutineId = computed(() => store.getters['session/routineId']);
+
+const formattedSessionTime = computed(() => {
+  const mins = Math.floor(sessionTime.value / 60);
+  const secs = sessionTime.value % 60;
+  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+});
+
+let sessionTimer = null;
+
+watch(isSessionActive, (newVal) => {
+  if (newVal) {
+    if (!sessionTimer) {
+      sessionTimer = setInterval(() => {
+        store.dispatch('session/updateElapsedTime');
+      }, 1000);
+    }
+  } else {
+    if (sessionTimer) {
+      clearInterval(sessionTimer);
+      sessionTimer = null;
+    }
+  }
+}, { immediate: true });
+
+const returnToSession = () => {
+  // Evitar rotear se já estivermos na tela de treino ativo para evitar erro de navegação
+  if (sessionRoutineId.value && route.path !== `/workout/${sessionRoutineId.value}`) {
+    router.push(`/workout/${sessionRoutineId.value}`);
+  }
+};
 
 const logout = async () => {
   await store.dispatch('auth/logout');

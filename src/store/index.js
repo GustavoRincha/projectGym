@@ -5,6 +5,7 @@ import history from './modules/history';
 import goals from './modules/goals';
 import gamification from './modules/gamification';
 import body from './modules/body';
+import session from './modules/session';
 
 // Plugin para persistência de dados no localStorage (preparado para trocar para backend)
 const localStoragePlugin = store => {
@@ -34,7 +35,8 @@ export default createStore({
     history,
     goals,
     gamification,
-    body
+    body,
+    session
   },
   plugins: [localStoragePlugin]
 });
