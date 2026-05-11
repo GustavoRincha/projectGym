@@ -49,10 +49,17 @@ export const syncService = {
         console.log(`[Sync Queue] Task ${task.type} processed successfully.`);
       } catch (error) {
         console.error(`[Sync Queue] Failed to process task ${task.type}:`, error);
-        // Se for erro de rede, paramos a fila e tentamos depois.
-        // Se for erro de validação (ex: auth token expirado), talvez devêssemos remover? 
-        // Por segurança, deixamos na fila até ter sucesso ou dar erro crítico não-recuperável.
-        break; // Interrompe a execução para manter a ordem se falhou por internet
+        
+        // Se for erro da API do Supabase (ex: coluna não encontrada, PGRST204), não adianta tentar de novo.
+        // Removemos da fila para não travar os próximos envios.
+        // Se não tiver error.code, assumimos que é erro de rede (offline) e mantemos na fila.
+        if (error && error.code) {
+          console.warn(`[Sync Queue] Discarding unrecoverable task ${task.id} due to API error: ${error.code}`);
+          this.removeFromQueue(task.id);
+          continue; // Pula para a próxima tarefa
+        }
+
+        break; // Interrompe a execução para manter a ordem se falhou por internet (erro de rede)
       }
     }
   },
