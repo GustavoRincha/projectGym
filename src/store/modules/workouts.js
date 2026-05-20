@@ -93,6 +93,10 @@ export default {
       const routineToSave = {
         ...routine,
         id: newRoutineId,
+        created_by_name: rootState.auth?.user?.user_metadata?.name || 
+                         rootState.auth?.user?.user_metadata?.username || 
+                         (rootState.auth?.user?.email ? rootState.auth.user.email.split('@')[0] : '') || 
+                         'Desconhecido',
       };
 
       // Commitar imediatamente para a tela já mostrar (sem esperar internet)
@@ -106,6 +110,7 @@ export default {
         objective: routineToSave.objective,
         split: routineToSave.split,
         days_of_week: routineToSave.daysOfWeek || [],
+        created_by_name: routineToSave.created_by_name,
         exercises: (routineToSave.exercises || []).map(ex => ({
           // Não enviamos o 'id' do exercício: deixamos o banco de dados (Supabase) gerar automaticamente
           routine_id: newRoutineId,
@@ -130,20 +135,29 @@ export default {
     },
 
     async updateRoutine({ commit, rootState }, routine) {
+      const routineToUpdate = {
+        ...routine,
+        created_by_name: rootState.auth?.user?.user_metadata?.name || 
+                         rootState.auth?.user?.user_metadata?.username || 
+                         (rootState.auth?.user?.email ? rootState.auth.user.email.split('@')[0] : '') || 
+                         'Desconhecido',
+      };
+
       // 1. Optimistic UI
-      commit('UPDATE_ROUTINE', routine);
+      commit('UPDATE_ROUTINE', routineToUpdate);
 
       // 2. Formatar payload (camelCase -> snake_case)
       const payload = {
-        id: routine.id,
+        id: routineToUpdate.id,
         user_id: rootState.auth?.user?.id,
-        name: routine.name,
-        objective: routine.objective,
-        split: routine.split,
-        days_of_week: routine.daysOfWeek || [],
-        exercises: (routine.exercises || []).map(ex => ({
+        name: routineToUpdate.name,
+        objective: routineToUpdate.objective,
+        split: routineToUpdate.split,
+        days_of_week: routineToUpdate.daysOfWeek || [],
+        created_by_name: routineToUpdate.created_by_name,
+        exercises: (routineToUpdate.exercises || []).map(ex => ({
           // Não enviamos o 'id' do exercício: ao atualizar, nós apagamos os antigos e recriamos novos, logo o banco gera novos IDs
-          routine_id: routine.id,
+          routine_id: routineToUpdate.id,
           name: ex.name,
           machine: ex.machine,
           sets_min: ex.setsMin || ex.sets || 3,

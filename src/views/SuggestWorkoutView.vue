@@ -78,7 +78,17 @@
                 <v-expansion-panel v-for="(rt, i) in suggestedTemplate.routines" :key="i" class="bg-background">
                   <v-expansion-panel-title class="font-weight-bold">{{ rt.name }}</v-expansion-panel-title>
                   <v-expansion-panel-text>
-                    <v-chip size="small" class="mr-2 mb-2" color="primary" variant="tonal" v-for="ex in rt.exercises" :key="ex.id">
+                    <v-chip
+                      size="small"
+                      class="mr-2 mb-2"
+                      color="primary"
+                      variant="tonal"
+                      v-for="ex in rt.exercises"
+                      :key="ex.id"
+                      append-icon="mdi-information-outline"
+                      @click="openGuide(ex.name)"
+                      style="cursor: pointer;"
+                    >
                       {{ ex.name }} ({{ ex.setsMax }}x{{ ex.repsMax }})
                     </v-chip>
                   </v-expansion-panel-text>
@@ -116,7 +126,17 @@
               <v-expansion-panel v-for="(rt, i) in tpl.routines" :key="i" class="bg-background">
                 <v-expansion-panel-title class="font-weight-bold">{{ rt.name }}</v-expansion-panel-title>
                 <v-expansion-panel-text>
-                  <v-chip size="small" class="mr-2 mb-2" color="primary" variant="tonal" v-for="ex in rt.exercises" :key="ex.id">
+                  <v-chip
+                    size="small"
+                    class="mr-2 mb-2"
+                    color="primary"
+                    variant="tonal"
+                    v-for="ex in rt.exercises"
+                    :key="ex.id"
+                    append-icon="mdi-information-outline"
+                    @click="openGuide(ex.name)"
+                    style="cursor: pointer;"
+                  >
                     {{ ex.name }} ({{ ex.setsMax }}x{{ ex.repsMax }})
                   </v-chip>
                 </v-expansion-panel-text>
@@ -137,6 +157,9 @@
     <v-snackbar v-model="snackbar" color="success" timeout="3000">
       Treinos importados com sucesso!
     </v-snackbar>
+
+    <!-- Dialog de Guia de Execução -->
+    <ExerciseGuideDialog v-model="guideDialog" :exercise-name="selectedExerciseForGuide" />
   </div>
 </template>
 
@@ -145,11 +168,19 @@ import { ref, reactive } from 'vue';
 import { useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 import { workoutTemplates } from '@/data/workoutTemplates';
+import ExerciseGuideDialog from '@/components/ExerciseGuideDialog.vue';
 
 const router = useRouter();
 const store = useStore();
 
 const tab = ref('wizard');
+const guideDialog = ref(false);
+const selectedExerciseForGuide = ref('');
+
+const openGuide = (name) => {
+  selectedExerciseForGuide.value = name;
+  guideDialog.value = true;
+};
 const templates = ref(workoutTemplates);
 const snackbar = ref(false);
 

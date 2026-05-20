@@ -40,6 +40,15 @@
               </div>
             </div>
             <v-spacer></v-spacer>
+            <v-btn
+              v-if="ex.name"
+              icon="mdi-help-circle-outline"
+              variant="text"
+              size="small"
+              color="primary"
+              class="mr-1"
+              @click.stop="openGuide(ex.name)"
+            ></v-btn>
             <v-chip size="small" :color="isExerciseComplete(ex) ? 'success' : 'default'" class="mr-2">
               {{ completedSetsCount(ex) }}/{{ ex.setsMax }}
             </v-chip>
@@ -100,21 +109,277 @@
                 ></v-checkbox-btn>
               </v-col>
             </v-row>
+
+            <!-- Observações do Exercício -->
+            <v-textarea
+              v-model="ex.notes"
+              label="Observações do Exercício"
+              placeholder="Como foi a execução?"
+              variant="outlined"
+              density="compact"
+              rows="1"
+              auto-grow
+              class="mt-4"
+              hide-details
+              prepend-inner-icon="mdi-pencil-outline"
+            ></v-textarea>
           </v-expansion-panel-text>
         </v-expansion-panel>
       </v-expansion-panels>
 
-      <v-btn
-        color="primary"
-        size="large"
-        block
-        rounded="pill"
-        class="mt-6"
-        @click="finishWorkout"
-      >
-        Finalizar Treino
-      </v-btn>
+      <!-- Registro de Cardio -->
+      <v-card class="mt-4 bg-surface pa-4" elevation="1" rounded="lg">
+        <div class="d-flex align-center justify-space-between mb-3">
+          <div class="d-flex align-center">
+            <v-icon icon="mdi-heart-pulse" class="mr-2 text-secondary"></v-icon>
+            <span class="font-weight-bold text-subtitle-2">Cardio Realizado</span>
+          </div>
+          <v-btn
+            size="small"
+            color="secondary"
+            variant="tonal"
+            prepend-icon="mdi-plus"
+            @click="addCardioDialog = true"
+          >
+            Adicionar Cardio
+          </v-btn>
+        </div>
+
+        <div v-if="sessionCardios.length === 0" class="text-caption text-medium-emphasis text-center py-3">
+          Nenhum registro de cardio adicionado hoje.
+        </div>
+        <div v-else class="d-flex flex-column" style="gap: 12px;">
+          <v-card
+            v-for="(cardio, idx) in sessionCardios"
+            :key="idx"
+            variant="outlined"
+            class="pa-3 bg-background border-dashed"
+            rounded="lg"
+          >
+            <div class="d-flex align-center justify-space-between mb-2">
+              <div class="d-flex align-center">
+                <v-icon :icon="getCardioIcon(cardio.name)" class="mr-2 text-secondary" size="small"></v-icon>
+                <span class="text-body-2 font-weight-bold">{{ cardio.name }}</span>
+              </div>
+              <div>
+                <v-btn
+                  icon="mdi-help-circle-outline"
+                  variant="text"
+                  size="small"
+                  color="primary"
+                  class="mr-1"
+                  @click="openGuide(cardio.name)"
+                ></v-btn>
+                <v-btn
+                  icon="mdi-delete"
+                  variant="text"
+                  size="small"
+                  color="error"
+                  @click="removeCardio(idx)"
+                ></v-btn>
+              </div>
+            </div>
+
+            <!-- Timer e Controles -->
+            <div class="d-flex align-center justify-space-between flex-wrap" style="gap: 12px;">
+              <!-- Cronômetro Display -->
+              <div class="d-flex align-center">
+                <div class="text-h6 font-weight-black text-secondary mr-3" style="font-family: monospace; min-width: 65px;">
+                  {{ formatCardioTime(cardio.elapsedTime || 0) }}
+                </div>
+                <!-- Play/Pause Button -->
+                <v-btn
+                  :icon="cardio.isRunning ? 'mdi-pause' : 'mdi-play'"
+                  :color="cardio.isRunning ? 'warning' : 'success'"
+                  variant="flat"
+                  size="x-small"
+                  class="mr-2"
+                  @click="toggleCardioTimer(idx)"
+                ></v-btn>
+                <!-- Reset Button -->
+                <v-btn
+                  icon="mdi-refresh"
+                  variant="tonal"
+                  size="x-small"
+                  @click="resetCardioTimer(idx)"
+                ></v-btn>
+              </div>
+
+              <!-- Inputs Manuais (Tempo / Distância) -->
+              <div class="d-flex align-center" style="gap: 8px; max-width: 220px;">
+                <v-text-field
+                  :model-value="cardio.duration"
+                  label="Tempo (min)"
+                  type="number"
+                  density="compact"
+                  variant="outlined"
+                  hide-details
+                  style="width: 90px;"
+                  @update:model-value="val => updateCardioManual(idx, 'duration', val)"
+                ></v-text-field>
+                <v-text-field
+                  :model-value="cardio.distance"
+                  label="Dist (km)"
+                  type="number"
+                  step="0.1"
+                  density="compact"
+                  variant="outlined"
+                  hide-details
+                  style="width: 90px;"
+                  @update:model-value="val => updateCardioManual(idx, 'distance', val)"
+                ></v-text-field>
+              </div>
+            </div>
+          </v-card>
+        </div>
+      </v-card>
+
+      <!-- Anotações Gerais do Treino -->
+      <v-card class="mt-4 bg-surface pa-4" elevation="1" rounded="lg">
+        <div class="d-flex align-center mb-2">
+          <v-icon icon="mdi-note-text-outline" class="mr-2 text-primary"></v-icon>
+          <span class="font-weight-bold text-subtitle-2">Anotações Gerais do Treino</span>
+        </div>
+        <v-textarea
+          v-model="workoutNotes"
+          placeholder="Como foi o treino hoje? Anote cansaço, pump, disposição, etc..."
+          variant="outlined"
+          auto-grow
+          rows="2"
+          density="comfortable"
+          hide-details
+        ></v-textarea>
+      </v-card>
+
+      <!-- Botões de Ação -->
+      <div class="d-flex flex-column mt-6" style="gap: 12px;">
+        <v-btn
+          color="secondary"
+          size="large"
+          block
+          rounded="pill"
+          variant="tonal"
+          prepend-icon="mdi-plus"
+          @click="addExerciseDialog = true"
+        >
+          Adicionar Exercício
+        </v-btn>
+
+        <v-btn
+          color="primary"
+          size="large"
+          block
+          rounded="pill"
+          @click="finishWorkout"
+        >
+          Finalizar Treino
+        </v-btn>
+      </div>
     </div>
+
+    <!-- Add Exercise Dialog -->
+    <v-dialog v-model="addExerciseDialog" max-width="450">
+      <v-card color="surface">
+        <v-card-title class="text-h6 pt-4 px-4 font-weight-bold">Adicionar Exercício</v-card-title>
+        <v-card-text class="px-4 pt-2">
+          <v-combobox
+            v-model="newExerciseForm.name"
+            :items="existingExerciseNames"
+            label="Nome do Exercício"
+            placeholder="Ex: Supino Reto, Leg Press..."
+            variant="outlined"
+            density="comfortable"
+            class="mb-3"
+            autofocus
+          ></v-combobox>
+
+          <v-combobox
+            v-model="newExerciseForm.machine"
+            :items="commonMachines"
+            label="Equipamento / Máquina"
+            placeholder="Ex: Halteres, Barra Livre..."
+            variant="outlined"
+            density="comfortable"
+            class="mb-3"
+          ></v-combobox>
+
+          <v-row dense>
+            <v-col cols="6">
+              <v-text-field
+                v-model.number="newExerciseForm.sets"
+                label="Séries"
+                type="number"
+                min="1"
+                max="10"
+                variant="outlined"
+                density="comfortable"
+              ></v-text-field>
+            </v-col>
+            <v-col cols="6">
+              <v-text-field
+                v-model.number="newExerciseForm.reps"
+                label="Reps Alvo"
+                type="number"
+                min="1"
+                max="100"
+                variant="outlined"
+                density="comfortable"
+              ></v-text-field>
+            </v-col>
+          </v-row>
+        </v-card-text>
+        <v-card-actions class="px-4 pb-4">
+          <v-spacer></v-spacer>
+          <v-btn variant="text" @click="addExerciseDialog = false">Cancelar</v-btn>
+          <v-btn color="primary" variant="flat" @click="confirmAddExercise" :disabled="!newExerciseForm.name">Adicionar</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Add Cardio Dialog -->
+    <v-dialog v-model="addCardioDialog" max-width="400">
+      <v-card color="surface">
+        <v-card-title class="text-h6 pt-4 px-4 font-weight-bold">Registrar Cardio</v-card-title>
+        <v-card-text class="px-4 pt-2">
+          <v-combobox
+            v-model="newCardioForm.name"
+            :items="cardioOptions"
+            label="Tipo de Cardio"
+            placeholder="Selecione ou digite o tipo..."
+            variant="outlined"
+            density="comfortable"
+            class="mb-3"
+          ></v-combobox>
+
+          <v-text-field
+            v-model.number="newCardioForm.duration"
+            label="Duração (minutos)"
+            type="number"
+            min="1"
+            max="300"
+            variant="outlined"
+            density="comfortable"
+            class="mb-3"
+          ></v-text-field>
+
+          <v-text-field
+            v-model.number="newCardioForm.distance"
+            label="Distância (km) - Opcional"
+            type="number"
+            min="0"
+            step="0.1"
+            variant="outlined"
+            density="comfortable"
+          ></v-text-field>
+        </v-card-text>
+        <v-card-actions class="px-4 pb-4">
+          <v-spacer></v-spacer>
+          <v-btn variant="text" @click="addCardioDialog = false">Cancelar</v-btn>
+          <v-btn color="primary" variant="flat" @click="confirmAddCardio" :disabled="!newCardioForm.name || !newCardioForm.duration">Salvar</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Cancel Dialog -->
     <v-dialog v-model="cancelDialog" max-width="400">
       <v-card color="surface">
@@ -135,6 +400,9 @@
       <v-icon icon="mdi-check-circle" class="mr-2"></v-icon>
       {{ snackbar.text }}
     </v-snackbar>
+
+    <!-- Dialog de Guia de Execução -->
+    <ExerciseGuideDialog v-model="guideDialog" :exercise-name="selectedExerciseForGuide" />
   </div>
 </template>
 
@@ -142,16 +410,27 @@
 import { ref, reactive, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useStore } from 'vuex';
+import ExerciseGuideDialog from '@/components/ExerciseGuideDialog.vue';
 
 const route = useRoute();
 const router = useRouter();
 const store = useStore();
 
+const guideDialog = ref(false);
+const selectedExerciseForGuide = ref('');
+
+const openGuide = (name) => {
+  selectedExerciseForGuide.value = name;
+  guideDialog.value = true;
+};
+
 const routineId = route.params.id;
 const routine = computed(() => store.getters['workouts/getRoutineById'](routineId));
 
 // State for the ongoing session
+// State for the ongoing session
 const sessionExercises = ref([]);
+const sessionCardios = computed(() => store.state.session.cardios || []);
 const activePanel = ref([0]); // Open first exercise by default
 
 const elapsedTime = computed(() => store.getters['session/elapsedTime']);
@@ -210,6 +489,150 @@ const isFailureSet = (ex, setIndex) => {
 const cancelDialog = ref(false);
 const snackbar = reactive({ show: false, text: '', color: 'success' });
 
+// Workout Notes
+const workoutNotes = computed({
+  get: () => store.state.session.notes || '',
+  set: (val) => store.commit('session/UPDATE_SESSION_NOTES', val)
+});
+
+// Add Cardio dialog states & form
+const addCardioDialog = ref(false);
+const newCardioForm = reactive({ name: '', duration: '', distance: '' });
+const cardioOptions = [
+  'Esteira (Corrida/Caminhada)',
+  'Bicicleta Ergométrica',
+  'Elíptico',
+  'Escada',
+  'Corda',
+  'Outro'
+];
+
+const formatCardioTime = (seconds) => {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+};
+
+const toggleCardioTimer = (idx) => {
+  store.commit('session/TOGGLE_CARDIO_TIMER', idx);
+};
+
+const resetCardioTimer = (idx) => {
+  store.commit('session/RESET_CARDIO_TIMER', idx);
+};
+
+const updateCardioManual = (idx, key, val) => {
+  store.commit('session/UPDATE_CARDIO_MANUAL', {
+    index: idx,
+    key,
+    value: val === '' ? null : Number(val)
+  });
+};
+
+const getCardioIcon = (name) => {
+  if (!name || typeof name !== 'string') return 'mdi-heart-pulse';
+  if (name.includes('Esteira') || name.includes('Corrida') || name.includes('Caminhada')) return 'mdi-run';
+  if (name.includes('Bicicleta') || name.includes('Bike')) return 'mdi-bike';
+  if (name.includes('Elíptico')) return 'mdi-walk';
+  if (name.includes('Escada')) return 'mdi-stairs';
+  if (name.includes('Corda')) return 'mdi-jump-rope';
+  return 'mdi-heart-pulse';
+};
+
+const confirmAddCardio = () => {
+  if (!newCardioForm.name) return;
+
+  const durationVal = newCardioForm.duration ? Number(newCardioForm.duration) : 20;
+
+  const newCardioObj = {
+    name: newCardioForm.name,
+    duration: durationVal,
+    distance: newCardioForm.distance ? Number(newCardioForm.distance) : null,
+    elapsedTime: 0,
+    isRunning: false
+  };
+
+  store.commit('session/UPDATE_ALL_CARDIOS', [...sessionCardios.value, newCardioObj]);
+
+  // Clear form & close dialog
+  newCardioForm.name = '';
+  newCardioForm.duration = '';
+  newCardioForm.distance = '';
+  addCardioDialog.value = false;
+};
+
+const removeCardio = (index) => {
+  const filtered = sessionCardios.value.filter((_, idx) => idx !== index);
+  store.commit('session/UPDATE_ALL_CARDIOS', filtered);
+};
+
+// Add Exercise dialog states & list configs
+const addExerciseDialog = ref(false);
+const newExerciseForm = reactive({ name: '', machine: '', sets: 3, reps: 15 });
+const commonMachines = ['Barra Livre', 'Halteres', 'Polia', 'Máquina Articulada', 'Crossover', 'Peso Corporal', 'Kettlebell'];
+
+const allRoutines = computed(() => store.getters['workouts/allRoutines']);
+const existingExerciseNames = computed(() => {
+  const names = new Set();
+  const defaults = [
+    'Supino Reto', 'Supino Inclinado', 'Agachamento Livre', 'Levantamento Terra', 
+    'Rosca Direta', 'Rosca Alternada', 'Tríceps Pulley', 'Tríceps Testa', 
+    'Elevação Lateral', 'Desenvolvimento Halteres', 'Puxada Frente', 'Remada Curvada', 
+    'Leg Press', 'Cadeira Extensora', 'Mesa Flexora', 'Panturrilha Sentado'
+  ];
+  defaults.forEach(d => names.add(d));
+  if (allRoutines.value) {
+    allRoutines.value.forEach(r => {
+      if (r.exercises) {
+        r.exercises.forEach(ex => {
+          if (ex.name) names.add(ex.name);
+        });
+      }
+    });
+  }
+  return Array.from(names).sort();
+});
+
+const confirmAddExercise = () => {
+  if (!newExerciseForm.name || !newExerciseForm.name.trim()) return;
+
+  const newId = Date.now().toString() + Math.random().toString(36).substr(2, 5);
+  const setsCount = Number(newExerciseForm.sets) || 3;
+  const repsCount = Number(newExerciseForm.reps) || 15;
+
+  const newExercise = {
+    id: newId,
+    name: newExerciseForm.name.trim(),
+    machine: newExerciseForm.machine || '',
+    setsMax: setsCount,
+    setsMin: setsCount,
+    repsMin: repsCount,
+    repsMax: repsCount,
+    failureSets: 0,
+    performed: Array.from({ length: setsCount }, () => ({
+      weight: 0,
+      reps: repsCount,
+      completed: false
+    })),
+    notes: ''
+  };
+
+  sessionExercises.value.push(newExercise);
+
+  // Clear form & close
+  addExerciseDialog.value = false;
+  newExerciseForm.name = '';
+  newExerciseForm.machine = '';
+  newExerciseForm.sets = 3;
+  newExerciseForm.reps = 15;
+
+  // Open the new panel
+  const newIndex = sessionExercises.value.length - 1;
+  if (!activePanel.value.includes(newIndex)) {
+    activePanel.value = [...activePanel.value, newIndex];
+  }
+};
+
 const showMessage = (text, color = 'success') => {
   snackbar.text = text;
   snackbar.color = color;
@@ -227,12 +650,42 @@ const confirmCancel = () => {
 };
 
 const finishWorkout = async () => {
+  const exercisesToSave = JSON.parse(JSON.stringify(sessionExercises.value));
+  
+  // Append cardio objects
+  if (sessionCardios.value && sessionCardios.value.length > 0) {
+    sessionCardios.value.forEach((cardio, idx) => {
+      const finalDuration = (cardio.elapsedTime && cardio.elapsedTime > 0)
+        ? Math.ceil(cardio.elapsedTime / 60)
+        : (Number(cardio.duration) || 0);
+
+      exercisesToSave.push({
+        id: `session-cardio-meta-${idx}`,
+        name: cardio.name,
+        duration: finalDuration,
+        distance: cardio.distance || null,
+        isCardio: true,
+        performed: []
+      });
+    });
+  }
+
+  if (workoutNotes.value && workoutNotes.value.trim()) {
+    exercisesToSave.push({
+      id: 'session-notes-meta',
+      name: 'Observações do Treino',
+      notes: workoutNotes.value.trim(),
+      isNotes: true,
+      performed: []
+    });
+  }
+
   const sessionData = {
     routineId:    routine.value.id,
     routineName:  routine.value.name,
     date:         new Date().toISOString(),
     duration:     elapsedTime.value,
-    exercises:    sessionExercises.value
+    exercises:    exercisesToSave
   };
 
   // Save session first so rootState has it for badge checking

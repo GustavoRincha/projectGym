@@ -48,23 +48,22 @@
       </div>
     </v-card>
 
-    <!-- Step 2: Exercícios -->
+    <!-- Step 2: Exercícios de Musculação -->
     <v-card color="surface" elevation="2" rounded="lg" class="mb-4 pa-4 border-t-4 border-t-secondary">
       <div class="d-flex justify-space-between align-center mb-4">
-        <h2 class="text-h6 font-weight-bold">Exercícios</h2>
+        <h2 class="text-h6 font-weight-bold">Exercícios de Musculação</h2>
         <v-btn color="secondary" size="small" variant="tonal" prepend-icon="mdi-plus" @click="addExercise">
-          Adicionar
+          Adicionar Exercício
         </v-btn>
       </div>
 
-      <div v-if="workout.exercises.length === 0" class="text-center py-4 text-medium-emphasis">
-        Nenhum exercício adicionado ainda.
+      <div v-if="musculationExercises.length === 0" class="text-center py-4 text-medium-emphasis">
+        Nenhum exercício de musculação adicionado ainda.
       </div>
 
-      <!-- v-model="openPanels" controla quais painéis estão abertos -->
       <v-expansion-panels v-else v-model="openPanels" multiple variant="accordion" class="mb-4">
         <v-expansion-panel
-          v-for="(ex, index) in workout.exercises"
+          v-for="(ex, index) in musculationExercises"
           :key="ex.id"
           :value="ex.id"
           class="bg-background mb-2"
@@ -72,7 +71,16 @@
           <v-expansion-panel-title>
             <span class="font-weight-bold">{{ index + 1 }}. {{ ex.name || 'Novo Exercício' }}</span>
             <template v-slot:actions>
-              <v-btn icon="mdi-delete" variant="text" size="small" color="error" class="mr-1" @click.stop="removeExercise(index)"></v-btn>
+              <v-btn
+                v-if="ex.name"
+                icon="mdi-help-circle-outline"
+                variant="text"
+                size="small"
+                color="primary"
+                class="mr-1"
+                @click.stop="openGuide(ex.name)"
+              ></v-btn>
+              <v-btn icon="mdi-delete" variant="text" size="small" color="error" class="mr-1" @click.stop="removeExerciseById(ex.id)"></v-btn>
               <v-icon icon="mdi-chevron-down"></v-icon>
             </template>
           </v-expansion-panel-title>
@@ -269,6 +277,84 @@
       </v-expansion-panels>
     </v-card>
 
+    <!-- Step 3: Cardio -->
+    <v-card color="surface" elevation="2" rounded="lg" class="mb-4 pa-4 border-t-4 border-t-accent">
+      <div class="d-flex justify-space-between align-center mb-4">
+        <h2 class="text-h6 font-weight-bold">Metas de Cardio</h2>
+        <v-btn color="accent" size="small" variant="tonal" prepend-icon="mdi-plus" @click="addCardio">
+          Adicionar Cardio
+        </v-btn>
+      </div>
+
+      <div v-if="cardioExercises.length === 0" class="text-center py-4 text-medium-emphasis">
+        Nenhuma meta de cardio adicionada ainda.
+      </div>
+
+      <v-expansion-panels v-else v-model="openPanels" multiple variant="accordion" class="mb-4">
+        <v-expansion-panel
+          v-for="(cEx, index) in cardioExercises"
+          :key="cEx.id"
+          :value="cEx.id"
+          class="bg-background mb-2"
+        >
+          <v-expansion-panel-title>
+            <div class="d-flex align-center">
+              <v-icon icon="mdi-heart-pulse" class="mr-2 text-accent"></v-icon>
+              <span class="font-weight-bold">{{ index + 1 }}. {{ cEx.name || 'Nova Meta de Cardio' }}</span>
+            </div>
+            <template v-slot:actions>
+              <v-btn
+                v-if="cEx.name"
+                icon="mdi-help-circle-outline"
+                variant="text"
+                size="small"
+                color="primary"
+                class="mr-1"
+                @click.stop="openGuide(cEx.name)"
+              ></v-btn>
+              <v-btn icon="mdi-delete" variant="text" size="small" color="error" class="mr-1" @click.stop="removeExerciseById(cEx.id)"></v-btn>
+              <v-icon icon="mdi-chevron-down"></v-icon>
+            </template>
+          </v-expansion-panel-title>
+          
+          <v-expansion-panel-text>
+            <v-row dense class="mt-2">
+              <v-col cols="12" sm="4">
+                <v-combobox
+                  v-model="cEx.name"
+                  :items="cardioOptions"
+                  label="Tipo de Cardio"
+                  variant="outlined"
+                  density="compact"
+                ></v-combobox>
+              </v-col>
+              <v-col cols="12" sm="4">
+                <v-text-field
+                  v-model.number="cEx.setsMax"
+                  label="Meta de Tempo (minutos)"
+                  type="number"
+                  variant="outlined"
+                  density="compact"
+                  min="1"
+                ></v-text-field>
+              </v-col>
+              <v-col cols="12" sm="4">
+                <v-text-field
+                  v-model.number="cEx.repsMax"
+                  label="Meta de Distância (km) - Opcional"
+                  type="number"
+                  step="0.1"
+                  variant="outlined"
+                  density="compact"
+                  min="0"
+                ></v-text-field>
+              </v-col>
+            </v-row>
+          </v-expansion-panel-text>
+        </v-expansion-panel>
+      </v-expansion-panels>
+    </v-card>
+
     <v-btn color="primary" block size="large" rounded="pill" @click="saveWorkout">
       {{ isEditMode ? 'Atualizar Treino' : 'Salvar Treino' }}
     </v-btn>
@@ -285,6 +371,23 @@
       @click="addExercise"
     ></v-btn>
 
+    <!-- Dialog para confirmação de saída -->
+    <v-dialog v-model="showLeaveConfirmDialog" max-width="400">
+      <v-card color="surface" rounded="lg">
+        <v-card-title class="text-h6 font-weight-bold pt-4 px-4 text-warning">
+          <v-icon icon="mdi-alert-circle" class="mr-2"></v-icon>Descartar Alterações?
+        </v-card-title>
+        <v-card-text class="px-4 py-2 text-medium-emphasis">
+          Você tem alterações não salvas no treino. Tem certeza que deseja sair? O progresso feito será perdido.
+        </v-card-text>
+        <v-card-actions class="px-4 pb-4 pt-2">
+          <v-spacer></v-spacer>
+          <v-btn variant="text" @click="showLeaveConfirmDialog = false">Continuar Editando</v-btn>
+          <v-btn color="error" variant="flat" @click="confirmLeave">Descartar e Sair</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Snackbar para alertas -->
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" timeout="3000">
       {{ snackbar.text }}
@@ -292,17 +395,29 @@
         <v-btn variant="text" @click="snackbar.show = false">Fechar</v-btn>
       </template>
     </v-snackbar>
+
+    <!-- Dialog de Guia de Execução -->
+    <ExerciseGuideDialog v-model="guideDialog" :exercise-name="selectedExerciseForGuide" />
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue';
 import { useStore } from 'vuex';
-import { useRouter, useRoute } from 'vue-router';
+import { useRouter, useRoute, onBeforeRouteLeave } from 'vue-router';
+import ExerciseGuideDialog from '@/components/ExerciseGuideDialog.vue';
 
 const store = useStore();
 const router = useRouter();
 const route = useRoute();
+
+const guideDialog = ref(false);
+const selectedExerciseForGuide = ref('');
+
+const openGuide = (name) => {
+  selectedExerciseForGuide.value = name;
+  guideDialog.value = true;
+};
 
 // Edit mode: exists when there is a routineId in the route params
 const editId = route.params.id || null;
@@ -348,6 +463,35 @@ const workout = reactive({
   exercises: []
 });
 
+// Leave/Dirty State refs
+const originalWorkoutData = ref('');
+const isSaved = ref(false);
+const showLeaveConfirmDialog = ref(false);
+const toRoute = ref(null);
+const allowLeave = ref(false);
+
+const isDirty = computed(() => {
+  if (isSaved.value) return false;
+  return originalWorkoutData.value !== JSON.stringify(workout);
+});
+
+const musculationExercises = computed(() => {
+  return workout.exercises.filter(ex => ex.machine !== 'Cardio');
+});
+
+const cardioExercises = computed(() => {
+  return workout.exercises.filter(ex => ex.machine === 'Cardio');
+});
+
+const cardioOptions = [
+  'Esteira (Corrida/Caminhada)',
+  'Bicicleta Ergométrica',
+  'Elíptico',
+  'Escada',
+  'Corda',
+  'Outro'
+];
+
 // If in edit mode, load existing routine data into workout
 onMounted(() => {
   if (isEditMode.value) {
@@ -364,7 +508,41 @@ onMounted(() => {
       openPanels.value = workout.exercises.map(ex => ex.id);
     }
   }
+  
+  // Store the stringified representation of the workout at mount time
+  originalWorkoutData.value = JSON.stringify(workout);
+
+  // Register browser beforeunload event listener
+  window.addEventListener('beforeunload', handleBeforeUnload);
 });
+
+onUnmounted(() => {
+  window.removeEventListener('beforeunload', handleBeforeUnload);
+});
+
+const handleBeforeUnload = (e) => {
+  if (isDirty.value) {
+    e.preventDefault();
+    e.returnValue = '';
+  }
+};
+
+onBeforeRouteLeave((to, from) => {
+  if (allowLeave.value || !isDirty.value) {
+    return true;
+  }
+  toRoute.value = to;
+  showLeaveConfirmDialog.value = true;
+  return false; // Blocks navigation
+});
+
+const confirmLeave = () => {
+  allowLeave.value = true;
+  showLeaveConfirmDialog.value = false;
+  if (toRoute.value) {
+    router.push(toRoute.value);
+  }
+};
 
 const addExercise = () => {
   const newId = Date.now().toString() + Math.random().toString(36).substr(2, 5);
@@ -390,10 +568,33 @@ const addExercise = () => {
   openPanels.value = [...openPanels.value, newId];
 };
 
-const removeExercise = (index) => {
-  const removed = workout.exercises[index];
-  openPanels.value = openPanels.value.filter(id => id !== removed.id);
-  workout.exercises.splice(index, 1);
+const addCardio = () => {
+  const newId = Date.now().toString() + Math.random().toString(36).substr(2, 5);
+  workout.exercises.push({
+    id: newId,
+    name: 'Esteira (Corrida/Caminhada)',
+    machine: 'Cardio',
+    setsMin: 1,
+    setsMax: 20, // Meta de Tempo padrão
+    repsMin: 0,
+    repsMax: 0, // Meta de Distância padrão (opcional)
+    failureSets: 0,
+    weight: 0,
+    progressionType: 'none',
+    progressionValue: 0,
+    progressionFrequency: 'weekly',
+    progressionPerSet: 0,
+  });
+
+  openPanels.value = [...openPanels.value, newId];
+};
+
+const removeExerciseById = (id) => {
+  openPanels.value = openPanels.value.filter(panelId => panelId !== id);
+  const idx = workout.exercises.findIndex(ex => ex.id === id);
+  if (idx !== -1) {
+    workout.exercises.splice(idx, 1);
+  }
 };
 
 // Snackbar state
@@ -435,6 +636,9 @@ const saveWorkout = () => {
     return;
   }
   
+  // Disable dirty check warning on successful save
+  isSaved.value = true;
+
   // Clone object before saving
   const routineData = JSON.parse(JSON.stringify(workout));
   

@@ -6,7 +6,9 @@ export default {
     routineName: null,
     startTime: null,
     elapsedTime: 0,
-    exercises: []
+    exercises: [],
+    notes: '',
+    cardios: []
   },
   getters: {
     isActive: (state) => state.isActive,
@@ -14,6 +16,8 @@ export default {
     routineName: (state) => state.routineName,
     elapsedTime: (state) => state.elapsedTime,
     exercises: (state) => state.exercises,
+    notes: (state) => state.notes || '',
+    cardios: (state) => state.cardios || [],
   },
   mutations: {
     START_SESSION(state, { routine, exercises }) {
@@ -23,10 +27,25 @@ export default {
       state.startTime = Date.now();
       state.elapsedTime = 0;
       state.exercises = exercises;
+      state.notes = '';
+      state.cardios = [];
     },
     UPDATE_ELAPSED_TIME(state) {
       if (state.isActive && state.startTime) {
         state.elapsedTime = Math.floor((Date.now() - state.startTime) / 1000);
+      }
+
+      // Increment running cardio timers
+      if (state.cardios && state.cardios.length > 0) {
+        state.cardios = state.cardios.map(cardio => {
+          if (cardio.isRunning) {
+            return {
+              ...cardio,
+              elapsedTime: (cardio.elapsedTime || 0) + 1
+            };
+          }
+          return cardio;
+        });
       }
     },
     UPDATE_EXERCISE(state, { index, exercise }) {
@@ -35,6 +54,52 @@ export default {
     UPDATE_ALL_EXERCISES(state, exercises) {
       state.exercises = exercises;
     },
+    UPDATE_SESSION_NOTES(state, notes) {
+      state.notes = notes;
+    },
+    UPDATE_ALL_CARDIOS(state, cardios) {
+      state.cardios = cardios;
+    },
+    TOGGLE_CARDIO_TIMER(state, index) {
+      if (state.cardios && state.cardios[index]) {
+        state.cardios = state.cardios.map((cardio, idx) => {
+          if (idx === index) {
+            return {
+              ...cardio,
+              isRunning: !cardio.isRunning
+            };
+          }
+          return cardio;
+        });
+      }
+    },
+    RESET_CARDIO_TIMER(state, index) {
+      if (state.cardios && state.cardios[index]) {
+        state.cardios = state.cardios.map((cardio, idx) => {
+          if (idx === index) {
+            return {
+              ...cardio,
+              elapsedTime: 0,
+              isRunning: false
+            };
+          }
+          return cardio;
+        });
+      }
+    },
+    UPDATE_CARDIO_MANUAL(state, { index, key, value }) {
+      if (state.cardios && state.cardios[index]) {
+        state.cardios = state.cardios.map((cardio, idx) => {
+          if (idx === index) {
+            return {
+              ...cardio,
+              [key]: value
+            };
+          }
+          return cardio;
+        });
+      }
+    },
     CLEAR_SESSION(state) {
       state.isActive = false;
       state.routineId = null;
@@ -42,12 +107,16 @@ export default {
       state.startTime = null;
       state.elapsedTime = 0;
       state.exercises = [];
+      state.notes = '';
+      state.cardios = [];
     }
   },
   actions: {
     startSession({ commit }, routine) {
-      // Setup the exercises array with performed arrays
-      const exercises = JSON.parse(JSON.stringify(routine.exercises)).map(ex => {
+      const routineExercises = routine.exercises || [];
+
+      // Musculation exercises
+      const exercises = JSON.parse(JSON.stringify(routineExercises.filter(ex => ex.machine !== 'Cardio'))).map(ex => {
         ex.performed = Array.from({ length: ex.setsMax }, () => ({
           weight: ex.weight || 0,
           reps: ex.repsMax || parseInt(ex.repsMin) || 0,
@@ -55,7 +124,18 @@ export default {
         }));
         return ex;
       });
+
+      // Cardio exercises
+      const cardios = JSON.parse(JSON.stringify(routineExercises.filter(ex => ex.machine === 'Cardio'))).map(c => ({
+        name: c.name,
+        duration: c.setsMax || 20,
+        distance: c.repsMax || null,
+        elapsedTime: 0,
+        isRunning: false
+      }));
+
       commit('START_SESSION', { routine, exercises });
+      commit('UPDATE_ALL_CARDIOS', cardios);
     },
     updateElapsedTime({ commit }) {
       commit('UPDATE_ELAPSED_TIME');

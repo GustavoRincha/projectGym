@@ -16,6 +16,10 @@
             <template v-slot:prepend><v-icon color="secondary">mdi-magic-staff</v-icon></template>
             <v-list-item-title>Assistente / Catálogo</v-list-item-title>
           </v-list-item>
+          <v-list-item @click="openImportDialog">
+            <template v-slot:prepend><v-icon color="primary">mdi-download</v-icon></template>
+            <v-list-item-title>Importar por Código</v-list-item-title>
+          </v-list-item>
         </v-list>
       </v-menu>
     </div>
@@ -45,6 +49,9 @@
                   <v-list-item @click="editRoutine(routine)">
                     <v-list-item-title>Editar</v-list-item-title>
                   </v-list-item>
+                  <v-list-item @click="openShareDialog(routine)">
+                    <v-list-item-title class="text-success">Compartilhar</v-list-item-title>
+                  </v-list-item>
                   <v-list-item @click="deleteRoutine(routine.id)">
                     <v-list-item-title class="text-error">Excluir</v-list-item-title>
                   </v-list-item>
@@ -55,7 +62,13 @@
           
           <v-card-text>
             <v-chip size="small" class="mr-2 mb-2 bg-background" v-for="ex in routine.exercises" :key="ex.id">
-              {{ ex.name }} ({{ ex.setsMax }}x{{ ex.repsMax }})
+              <span v-if="ex.machine === 'Cardio'">
+                <v-icon icon="mdi-heart-pulse" size="x-small" class="mr-1 text-secondary"></v-icon>
+                {{ ex.name }} ({{ ex.setsMax }} min)
+              </span>
+              <span v-else>
+                {{ ex.name }} ({{ ex.setsMax }}x{{ ex.repsMax }})
+              </span>
             </v-chip>
           </v-card-text>
 
@@ -99,6 +112,152 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Dialog para Importar Treino -->
+    <v-dialog v-model="importDialog" max-width="450">
+      <v-card color="surface" rounded="lg">
+        <v-card-title class="text-h6 font-weight-bold pt-4 px-4">
+          <v-icon icon="mdi-download" class="mr-2 text-primary"></v-icon>Importar Treino
+        </v-card-title>
+        
+        <!-- Passo 1: Inserir Código -->
+        <template v-if="importStep === 'input'">
+          <v-card-text class="px-4 py-2">
+            <p class="text-caption text-medium-emphasis mb-4">
+              Insira o código de compartilhamento do treino para buscá-lo no sistema.
+            </p>
+            <v-text-field
+              v-model="shareCodeInput"
+              label="Código do Treino (UUID)"
+              placeholder="Ex: 550e8400-e29b-41d4-a716-446655440000"
+              variant="outlined"
+              density="comfortable"
+              hide-details
+              :disabled="importLoading"
+              class="mb-2"
+            ></v-text-field>
+            <div v-if="importError" class="text-caption text-error mt-2">
+              <v-icon icon="mdi-alert-circle" size="x-small" class="mr-1"></v-icon>
+              {{ importError }}
+            </div>
+          </v-card-text>
+          <v-card-actions class="px-4 pb-4 pt-2">
+            <v-spacer></v-spacer>
+            <v-btn variant="text" @click="importDialog = false" :disabled="importLoading">Cancelar</v-btn>
+            <v-btn
+              color="primary"
+              variant="flat"
+              @click="fetchSharedRoutine"
+              :loading="importLoading"
+              :disabled="!shareCodeInput.trim()"
+            >
+              Buscar Treino
+            </v-btn>
+          </v-card-actions>
+        </template>
+
+        <!-- Passo 2: Pré-visualização do Treino Encontrado -->
+        <template v-else-if="importStep === 'preview'">
+          <v-card-text class="px-4 py-2">
+            <div class="mb-3">
+              <span class="text-caption text-primary font-weight-bold uppercase" style="letter-spacing: 1px;">Treino Encontrado!</span>
+              <h3 class="text-h6 font-weight-bold mt-1">{{ previewRoutine?.name }}</h3>
+              <p class="text-caption text-medium-emphasis mt-1">
+                Compartilhado por: <strong class="text-high-emphasis">{{ previewRoutine?.created_by_name || 'Usuário do Gym Track' }}</strong>
+              </p>
+            </div>
+
+            <v-divider class="mb-3"></v-divider>
+
+            <div class="mb-1 text-subtitle-2 font-weight-bold text-medium-emphasis">
+              Detalhes do Treino:
+            </div>
+            <div class="d-flex flex-wrap gap-2 mb-3" style="gap: 8px;">
+              <v-chip size="small" variant="flat" color="surface-variant" v-if="previewRoutine?.objective">
+                Foco: {{ previewRoutine.objective }}
+              </v-chip>
+              <v-chip size="small" variant="flat" color="surface-variant" v-if="previewRoutine?.split">
+                Divisão: {{ previewRoutine.split }}
+              </v-chip>
+              <v-chip size="small" variant="flat" color="primary">
+                {{ previewRoutine?.exercises?.length || 0 }} exercícios
+              </v-chip>
+            </div>
+
+            <div class="mb-1 text-subtitle-2 font-weight-bold text-medium-emphasis">
+              Exercícios incluídos:
+            </div>
+            <v-list density="compact" class="bg-background rounded-lg pa-2 border" style="max-height: 180px; overflow-y: auto;">
+              <v-list-item v-for="ex in previewRoutine?.exercises" :key="ex.id" class="px-2">
+                <template v-slot:prepend>
+                  <v-icon :icon="ex.machine === 'Cardio' ? 'mdi-heart-pulse' : 'mdi-dumbbell'" size="small" class="mr-2" color="secondary"></v-icon>
+                </template>
+                <v-list-item-title class="text-body-2 font-weight-medium">{{ ex.name }}</v-list-item-title>
+                <v-list-item-subtitle class="text-caption text-medium-emphasis">
+                  {{ ex.machine === 'Cardio' ? `${ex.sets_max} min` : `${ex.sets_min} a ${ex.sets_max} séries` }}
+                </v-list-item-subtitle>
+              </v-list-item>
+            </v-list>
+            
+            <div v-if="importError" class="text-caption text-error mt-2">
+              <v-icon icon="mdi-alert-circle" size="x-small" class="mr-1"></v-icon>
+              {{ importError }}
+            </div>
+          </v-card-text>
+          <v-card-actions class="px-4 pb-4 pt-2">
+            <v-btn variant="text" @click="importStep = 'input'" :disabled="importLoading">Voltar</v-btn>
+            <v-spacer></v-spacer>
+            <v-btn
+              color="success"
+              variant="flat"
+              @click="confirmImport"
+              :loading="importLoading"
+            >
+              Confirmar Importação
+            </v-btn>
+          </v-card-actions>
+        </template>
+      </v-card>
+    </v-dialog>
+
+    <!-- Dialog para Compartilhar Treino -->
+    <v-dialog v-model="shareDialog" max-width="450">
+      <v-card color="surface" rounded="lg" v-if="selectedRoutineToShare">
+        <v-card-title class="text-h6 font-weight-bold pt-4 px-4 text-success">
+          <v-icon icon="mdi-share-variant" class="mr-2"></v-icon>Compartilhar Treino
+        </v-card-title>
+        <v-card-text class="px-4 py-2">
+          <p class="text-caption text-medium-emphasis mb-3">
+            Envie este código para seus amigos. Eles poderão importar este treino completo na conta deles!
+          </p>
+          <div class="pa-3 bg-background border border-dashed d-flex align-center justify-space-between rounded-lg mb-2">
+            <code class="text-body-2 font-weight-bold select-all" style="font-family: monospace; word-break: break-all; user-select: all;">
+              {{ selectedRoutineToShare.id }}
+            </code>
+            <v-btn
+              icon="mdi-content-copy"
+              variant="text"
+              size="small"
+              color="primary"
+              @click="copyShareCode"
+              class="ml-2"
+            ></v-btn>
+          </div>
+        </v-card-text>
+        <v-card-actions class="px-4 pb-4 pt-2">
+          <v-spacer></v-spacer>
+          <v-btn color="primary" variant="flat" @click="shareDialog = false">Fechar</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Snackbar para feedbacks -->
+    <v-snackbar v-model="snackbar.show" :color="snackbar.color" timeout="3000">
+      {{ snackbar.text }}
+      <template v-slot:actions>
+        <v-btn variant="text" @click="snackbar.show = false">Fechar</v-btn>
+      </template>
+    </v-snackbar>
   </div>
 </template>
 
@@ -106,9 +265,159 @@
 import { ref, computed } from 'vue';
 import { useStore } from 'vuex';
 import { useRouter } from 'vue-router';
+import { supabase } from '@/plugins/supabase';
 
 const store = useStore();
 const router = useRouter();
+
+// Dialogs and states for sharing/importing
+const importDialog = ref(false);
+const shareCodeInput = ref('');
+const importLoading = ref(false);
+const importError = ref('');
+const importStep = ref('input'); // 'input' | 'preview'
+const previewRoutine = ref(null);
+
+const shareDialog = ref(false);
+const selectedRoutineToShare = ref(null);
+
+const snackbar = ref({
+  show: false,
+  text: '',
+  color: 'success'
+});
+
+const showMessage = (text, color = 'success') => {
+  snackbar.value.text = text;
+  snackbar.value.color = color;
+  snackbar.value.show = true;
+};
+
+const openImportDialog = () => {
+  shareCodeInput.value = '';
+  importError.value = '';
+  importStep.value = 'input';
+  previewRoutine.value = null;
+  importDialog.value = true;
+};
+
+const fetchSharedRoutine = async () => {
+  const code = shareCodeInput.value.trim();
+  if (!code) return;
+
+  importLoading.value = true;
+  importError.value = '';
+
+  try {
+    // 1. Fetch routine from Supabase
+    const { data: routineData, error: routineError } = await supabase
+      .from('routines')
+      .select('*')
+      .eq('id', code)
+      .single();
+
+    if (routineError || !routineData) {
+      throw new Error('Não foi possível encontrar o treino correspondente a este código. Verifique se o código está correto ou se o treino existe.');
+    }
+
+    // 2. Fetch exercises of this routine
+    const { data: exercisesData, error: exercisesError } = await supabase
+      .from('exercises')
+      .select('*')
+      .eq('routine_id', code);
+
+    if (exercisesError) {
+      throw new Error('Erro ao carregar os exercícios do treino compartilhado.');
+    }
+
+    // 3. Save to preview routine
+    previewRoutine.value = {
+      ...routineData,
+      exercises: exercisesData || []
+    };
+    importStep.value = 'preview';
+  } catch (err) {
+    console.error('Error fetching shared routine:', err);
+    importError.value = err.message || 'Erro inesperado ao buscar o treino.';
+  } finally {
+    importLoading.value = false;
+  }
+};
+
+const confirmImport = async () => {
+  if (!previewRoutine.value) return;
+
+  importLoading.value = true;
+  importError.value = '';
+
+  try {
+    const routineData = previewRoutine.value;
+    // Create a clone structure
+    const newRoutine = {
+      name: `${routineData.name} (Importado)`,
+      objective: routineData.objective || '',
+      split: routineData.split || '',
+      daysOfWeek: routineData.days_of_week || [],
+      exercises: routineData.exercises.map(ex => ({
+        name: ex.name,
+        machine: ex.machine,
+        setsMin: ex.sets_min,
+        setsMax: ex.sets_max,
+        repsMin: ex.reps_min,
+        repsMax: ex.reps_max,
+        failureSets: ex.failure_sets,
+        weight: ex.weight,
+        progressionType: ex.progression_type,
+        progressionValue: ex.progression_value,
+        progressionFrequency: ex.progression_frequency,
+        progressionPerSet: ex.progression_per_set
+      }))
+    };
+
+    // Dispatch to store to save and sync automatically
+    await store.dispatch('workouts/addRoutine', newRoutine);
+
+    // Success feedback
+    importDialog.value = false;
+    showMessage('Treino importado com sucesso!', 'success');
+  } catch (err) {
+    console.error('Error importing routine:', err);
+    importError.value = err.message || 'Erro inesperado ao importar o treino.';
+  } finally {
+    importLoading.value = false;
+  }
+};
+
+const openShareDialog = async (routine) => {
+  const currentName = store.state.auth?.user?.user_metadata?.name || 
+                      store.state.auth?.user?.user_metadata?.username || 
+                      (store.state.auth?.user?.email ? store.state.auth.user.email.split('@')[0] : '') || 
+                      'Desconhecido';
+
+  if (!routine.created_by_name || routine.created_by_name === 'Desconhecido') {
+    if (currentName !== 'Desconhecido') {
+      const updatedRoutine = {
+        ...routine,
+        created_by_name: currentName
+      };
+      try {
+        await store.dispatch('workouts/updateRoutine', updatedRoutine);
+        routine.created_by_name = currentName;
+      } catch (err) {
+        console.error('Error auto-updating creator name on share:', err);
+      }
+    }
+  }
+  selectedRoutineToShare.value = routine;
+  shareDialog.value = true;
+};
+
+const copyShareCode = () => {
+  if (selectedRoutineToShare.value) {
+    navigator.clipboard.writeText(selectedRoutineToShare.value.id);
+    showMessage('Código copiado para a área de transferência!', 'success');
+  }
+};
 
 const routines = computed(() => store.getters['workouts/allRoutines']);
 
