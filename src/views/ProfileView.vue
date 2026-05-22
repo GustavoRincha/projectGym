@@ -1,0 +1,316 @@
+<template>
+  <div class="profile-view pb-16">
+    <h1 class="text-h4 font-weight-bold mb-6 mt-4">Perfil</h1>
+
+    <!-- Card Principal do Usuário -->
+    <v-card color="surface" elevation="2" rounded="xl" class="pa-6 mb-6">
+      <div class="d-flex align-center flex-column flex-sm-row">
+        <!-- Avatar Circular -->
+        <v-avatar color="primary" size="80" class="mb-4 mb-sm-0 mr-sm-6 elevation-2">
+          <span class="text-h4 font-weight-black text-background">
+            {{ userInitials }}
+          </span>
+        </v-avatar>
+        
+        <div class="text-center text-sm-left flex-grow-1">
+          <h2 class="text-h5 font-weight-bold mb-1">{{ userName }}</h2>
+          <p class="text-subtitle-2 text-medium-emphasis mb-2">@{{ userUsername }}</p>
+          <div class="d-flex align-center justify-center justify-sm-start text-caption text-medium-emphasis">
+            <v-icon icon="mdi-email-outline" size="small" class="mr-1"></v-icon>
+            {{ userEmail }}
+          </div>
+        </div>
+      </div>
+    </v-card>
+
+    <!-- Nível e Progressão de XP -->
+    <v-card color="surface" elevation="2" rounded="xl" class="pa-6 mb-6">
+      <div class="d-flex justify-space-between align-center mb-2">
+        <span class="text-subtitle-1 font-weight-bold d-flex align-center">
+          <span class="mr-2 text-h5">{{ level.icon }}</span> Nível {{ level.name }}
+        </span>
+        <span class="text-caption font-weight-black text-primary">{{ xp }} XP</span>
+      </div>
+
+      <!-- Barra de Progresso Customizada -->
+      <div class="xp-progress-container mb-3">
+        <div class="xp-progress-bar" :style="{ width: `${levelProgress}%` }"></div>
+      </div>
+
+      <div class="d-flex justify-space-between align-center text-caption text-medium-emphasis">
+        <span>Próximo nível</span>
+        <span v-if="level.nextXp">{{ xpToNextLevel }} XP restante</span>
+        <span v-else>Nível Máximo atingido!</span>
+      </div>
+    </v-card>
+
+    <!-- Estatísticas Rápidas -->
+    <v-row class="mb-6">
+      <v-col cols="6">
+        <v-card color="surface" elevation="1" rounded="lg" class="pa-4 text-center">
+          <v-icon icon="mdi-dumbbell" color="primary" size="large" class="mb-2"></v-icon>
+          <span class="text-h4 font-weight-black d-block mb-1">{{ totalWorkouts }}</span>
+          <span class="text-caption text-medium-emphasis font-weight-bold text-uppercase">Treinos Realizados</span>
+        </v-card>
+      </v-col>
+      <v-col cols="6">
+        <v-card color="surface" elevation="1" rounded="lg" class="pa-4 text-center">
+          <v-icon icon="mdi-fire" color="secondary" size="large" class="mb-2"></v-icon>
+          <span class="text-h4 font-weight-black d-block mb-1">{{ currentStreak }}</span>
+          <span class="text-caption text-medium-emphasis font-weight-bold text-uppercase">Dias Seguidos</span>
+        </v-card>
+      </v-col>
+    </v-row>
+
+    <!-- Conquistas e Medalhas -->
+    <v-card color="surface" elevation="2" rounded="xl" class="pa-6 mb-6">
+      <h3 class="text-h6 font-weight-bold mb-4 d-flex align-center">
+        <v-icon icon="mdi-medal-outline" class="mr-2 text-primary"></v-icon>
+        Medalhas e Conquistas
+      </h3>
+
+      <div v-if="badges.length > 0" class="badges-grid">
+        <div 
+          v-for="badge in badges" 
+          :key="badge.id" 
+          class="badge-item"
+          :class="{ 'locked': !badge.unlocked }"
+          v-ripple
+          @click="showBadgeDetails(badge)"
+        >
+          <div class="badge-icon mb-2">{{ badge.icon }}</div>
+          <div class="badge-name text-caption font-weight-bold text-truncate">{{ badge.name }}</div>
+          <div class="badge-rarity" :class="badge.rarity">{{ getRarityLabel(badge.rarity) }}</div>
+        </div>
+      </div>
+    </v-card>
+
+    <!-- Botão de Sair -->
+    <v-btn
+      color="error"
+      variant="tonal"
+      size="large"
+      block
+      rounded="pill"
+      prepend-icon="mdi-logout"
+      @click="logout"
+      class="font-weight-bold"
+    >
+      Sair da Conta
+    </v-btn>
+
+    <!-- Dialog de Detalhes da Medalha -->
+    <v-dialog v-model="badgeDialog" max-width="320">
+      <v-card v-if="selectedBadge" color="surface" class="pa-4 text-center rounded-xl">
+        <div class="text-h2 my-4">{{ selectedBadge.icon }}</div>
+        <v-card-title class="text-h6 font-weight-bold pt-0 px-2">{{ selectedBadge.name }}</v-card-title>
+        <div class="badge-rarity d-inline-block px-3 py-1 rounded-pill mb-4 text-caption" :class="selectedBadge.rarity" style="margin: 0 auto;">
+          {{ getRarityLabel(selectedBadge.rarity) }}
+        </div>
+        <v-card-text class="text-body-2 text-medium-emphasis px-2 pt-0 mb-4">
+          {{ selectedBadge.description }}
+        </v-card-text>
+        
+        <v-alert
+          v-if="selectedBadge.unlocked"
+          type="success"
+          variant="tonal"
+          density="compact"
+          class="text-caption mb-4"
+          rounded="lg"
+        >
+          Desbloqueada em {{ formatDate(selectedBadge.unlockedAt) }}
+        </v-alert>
+        <v-alert
+          v-else
+          type="warning"
+          variant="tonal"
+          density="compact"
+          class="text-caption mb-4"
+          rounded="lg"
+        >
+          Medalha bloqueada
+        </v-alert>
+
+        <v-card-actions class="pa-0">
+          <v-btn block color="primary" variant="flat" rounded="pill" @click="badgeDialog = false">Fechar</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed } from 'vue';
+import { useStore } from 'vuex';
+import { useRouter } from 'vue-router';
+
+const store = useStore();
+const router = useRouter();
+
+const badgeDialog = ref(false);
+const selectedBadge = ref(null);
+
+const user = computed(() => store.getters['auth/user']);
+const xp = computed(() => store.getters['gamification/xp']);
+const level = computed(() => store.getters['gamification/level']);
+const levelProgress = computed(() => store.getters['gamification/levelProgress']);
+const xpToNextLevel = computed(() => store.getters['gamification/xpToNextLevel']);
+const badges = computed(() => store.getters['gamification/allBadges']);
+const sessions = computed(() => store.getters['history/allSessions'] || []);
+
+const userName = computed(() => user.value?.user_metadata?.name || 'Usuário');
+const userUsername = computed(() => user.value?.user_metadata?.username || 'usuario');
+const userEmail = computed(() => user.value?.email || 'email@example.com');
+
+const userInitials = computed(() => {
+  const name = userName.value;
+  if (!name) return 'U';
+  const parts = name.trim().split(' ');
+  if (parts.length > 1) {
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+  return parts[0].slice(0, 2).toUpperCase();
+});
+
+const totalWorkouts = computed(() => sessions.value.length);
+
+const currentStreak = computed(() => {
+  if (sessions.value.length === 0) return 0;
+  
+  const sessionDateSet = new Set(sessions.value.map(s => {
+    const d = new Date(s.date);
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }));
+  
+  let streak = 0;
+  const today = new Date();
+  for (let i = 0; i <= 365; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    if (sessionDateSet.has(key)) {
+      streak++;
+    } else if (i > 0) {
+      break;
+    }
+  }
+  return streak;
+});
+
+const getRarityLabel = (rarity) => {
+  const labels = {
+    common: 'Comum',
+    rare: 'Rara',
+    epic: 'Épica',
+    legendary: 'Lendária'
+  };
+  return labels[rarity] || 'Comum';
+};
+
+const showBadgeDetails = (badge) => {
+  selectedBadge.value = badge;
+  badgeDialog.value = true;
+};
+
+const formatDate = (isoString) => {
+  if (!isoString) return '';
+  return new Date(isoString).toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+};
+
+const logout = async () => {
+  await store.dispatch('auth/logout');
+  router.push('/login');
+};
+</script>
+
+<style scoped>
+.xp-progress-container {
+  height: 8px;
+  background-color: rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.xp-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--v-theme-primary) 0%, #00E676 100%);
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+.badges-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 16px 12px;
+  justify-content: center;
+}
+
+.badge-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 8px 4px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.badge-item:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.badge-item.locked {
+  opacity: 0.35;
+  filter: grayscale(80%);
+}
+
+.badge-icon {
+  font-size: 32px;
+  line-height: 1;
+}
+
+.badge-name {
+  width: 100%;
+  font-size: 10px !important;
+  color: #FFFFFF;
+  margin-bottom: 2px;
+}
+
+.badge-rarity {
+  font-size: 8px;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 1px 4px;
+  border-radius: 4px;
+  letter-spacing: 0.3px;
+}
+
+.badge-rarity.common {
+  background-color: rgba(142, 142, 147, 0.15);
+  color: #8E8E93;
+}
+
+.badge-rarity.rare {
+  background-color: rgba(0, 122, 255, 0.15);
+  color: #007AFF;
+}
+
+.badge-rarity.epic {
+  background-color: rgba(175, 82, 222, 0.15);
+  color: #AF52DE;
+}
+
+.badge-rarity.legendary {
+  background-color: rgba(255, 149, 0, 0.15);
+  color: #FF9500;
+}
+</style>

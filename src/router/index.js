@@ -8,6 +8,7 @@ import HistoryView from '../views/HistoryView.vue';
 import GoalsView from '../views/GoalsView.vue';
 import LoginView from '../views/LoginView.vue';
 import SuggestWorkoutView from '../views/SuggestWorkoutView.vue';
+import ProfileView from '../views/ProfileView.vue';
 
 const routes = [
   {
@@ -62,6 +63,12 @@ const routes = [
     path: '/goals',
     name: 'Goals',
     component: GoalsView,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/profile',
+    name: 'Profile',
+    component: ProfileView,
     meta: { requiresAuth: true }
   }
 ];

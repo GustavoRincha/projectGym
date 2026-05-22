@@ -11,13 +11,13 @@
         Offline
       </v-chip>
 
-      <v-btn icon @click="logout">
+      <!-- <v-btn icon @click="logout">
         <v-icon>mdi-logout</v-icon>
-      </v-btn>
+      </v-btn> -->
     </v-app-bar>
 
     <v-main class="bg-background">
-      <v-container class="pb-16" fluid>
+      <v-container class="main-content-container" fluid>
         <!-- Banner de Treino Ativo -->
         <v-alert
           v-if="isSessionActive"
@@ -40,27 +40,35 @@
       </v-container>
     </v-main>
 
-    <v-bottom-navigation v-if="showBottomNav" bg-color="surface" color="primary" grow shift app>
-      <v-btn to="/" value="home">
-        <v-icon>mdi-home</v-icon>
-        <span>Início</span>
-      </v-btn>
+    <!-- Hotbar Glassmórfica Personalizada -->
+    <nav v-if="showBottomNav" class="custom-hotbar-container">
+      <div class="custom-hotbar">
+        <router-link to="/" class="hotbar-item" :class="{ 'active': route.path === '/' }">
+          <v-icon class="hotbar-icon">mdi-dumbbell</v-icon>
+          <span class="hotbar-label">MEU PLANO</span>
+        </router-link>
 
-      <v-btn to="/workouts" value="workouts">
-        <v-icon>mdi-format-list-bulleted</v-icon>
-        <span>Treinos</span>
-      </v-btn>
+        <router-link to="/workouts" class="hotbar-item" :class="{ 'active': route.path.startsWith('/workouts') }">
+          <v-icon class="hotbar-icon">mdi-view-grid-outline</v-icon>
+          <span class="hotbar-label">TREINOS</span>
+        </router-link>
 
-      <v-btn to="/history" value="history">
-        <v-icon>mdi-history</v-icon>
-        <span>Histórico</span>
-      </v-btn>
+        <router-link to="/goals" class="hotbar-item" :class="{ 'active': route.path.startsWith('/goals') }">
+          <v-icon class="hotbar-icon">mdi-chart-bar</v-icon>
+          <span class="hotbar-label">PROGRESSO</span>
+        </router-link>
 
-      <v-btn to="/goals" value="goals">
-        <v-icon>mdi-chart-line</v-icon>
-        <span>Progresso</span>
-      </v-btn>
-    </v-bottom-navigation>
+        <router-link to="/history" class="hotbar-item" :class="{ 'active': route.path.startsWith('/history') }">
+          <v-icon class="hotbar-icon">mdi-arm-flex</v-icon>
+          <span class="hotbar-label">EXERCÍCIOS</span>
+        </router-link>
+
+        <router-link to="/profile" class="hotbar-item" :class="{ 'active': route.path.startsWith('/profile') }">
+          <v-icon class="hotbar-icon">mdi-account-outline</v-icon>
+          <span class="hotbar-label">PERFIL</span>
+        </router-link>
+      </div>
+    </nav>
   </v-app>
 </template>
 
@@ -171,8 +179,76 @@ body {
   font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   background-color: #121212;
 }
-/* Ensure the active button in bottom nav has more emphasis */
-.v-bottom-navigation .v-btn--active {
-  color: #00E676 !important;
+.main-content-container {
+  padding-bottom: 110px !important;
+}
+
+/* Custom Hotbar Glassmorphism Styles */
+.custom-hotbar-container {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 92%;
+  max-width: 580px;
+  z-index: 9999;
+}
+
+.custom-hotbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(13, 27, 34, 0.85); /* Dark teal-blue glassmorphic background */
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 50px;
+  border: 1.5px solid rgba(0, 230, 118, 0.12); /* Thin glowing green border */
+  padding: 6px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 15px rgba(0, 230, 118, 0.05);
+}
+
+.hotbar-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  flex: 1;
+  height: 56px;
+  border-radius: 100px;
+  color: rgba(255, 255, 255, 0.6) !important;
+  border: 1px solid transparent;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 4px 2px;
+}
+
+.hotbar-item:hover {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.hotbar-item.active {
+  color: #FFFFFF !important;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1), 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.hotbar-icon {
+  font-size: 22px !important;
+  margin-bottom: 2px;
+  transition: transform 0.25s ease;
+}
+
+.hotbar-item.active .hotbar-icon {
+  transform: scale(1.05);
+  color: #FFFFFF !important;
+}
+
+.hotbar-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-align: center;
+  line-height: 1.2;
 }
 </style>
