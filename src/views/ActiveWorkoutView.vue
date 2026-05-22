@@ -458,7 +458,6 @@ import { useRoute, useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 import ExerciseGuideDialog from '@/components/ExerciseGuideDialog.vue';
 import { groupExercises, parseMachine } from '@/utils/workoutHelpers';
-import { notificationService } from '@/services/notificationService';
 
 const route = useRoute();
 const router = useRouter();
@@ -529,13 +528,6 @@ const getActiveExerciseAndSet = () => {
   };
 };
 
-// Atualiza a notificação local do treino em andamento
-const updateWorkoutNotification = () => {
-  const { name, setInfo } = getActiveExerciseAndSet();
-  const routineName = routine.value ? routine.value.name : 'Treino';
-  notificationService.showWorkoutNotification(routineName, name, setInfo, formattedTime.value);
-};
-
 onMounted(() => {
   const isActive = store.getters['session/isActive'];
   const activeId = store.getters['session/routineId'];
@@ -560,31 +552,12 @@ onMounted(() => {
       activePanel.value = [groupedExercises.value[0].id];
     }
   }
-
-  // Dispara a notificação inicial do treino
-  updateWorkoutNotification();
-
-  // Inicia o áudio silencioso em segundo plano para manter o processo do timer ativo
-  notificationService.startBackgroundAudio();
 });
 
-onUnmounted(() => {
-  // Interrompe o áudio silencioso em segundo plano
-  notificationService.stopBackgroundAudio();
-  // Remove a notificação ativa ao fechar o app/tela
-  notificationService.closeNotification();
-});
-
-// Sincroniza qualquer alteração no tempo decorrido para atualizar a notificação a cada segundo
-watch(elapsedTime, () => {
-  updateWorkoutNotification();
-});
-
-// Sincroniza qualquer alteração no formulário com o estado global e atualiza a notificação
+// Sincroniza qualquer alteração no formulário com o estado global
 watch(sessionExercises, (newVal) => {
   if (newVal.length > 0) {
     store.commit('session/UPDATE_ALL_EXERCISES', newVal);
-    updateWorkoutNotification();
   }
 }, { deep: true });
 
@@ -762,8 +735,6 @@ const cancelWorkout = () => {
 
 const confirmCancel = () => {
   cancelDialog.value = false;
-  notificationService.stopBackgroundAudio();
-  notificationService.closeNotification();
   store.dispatch('session/clearSession');
   router.push('/');
 };
@@ -832,8 +803,6 @@ const finishWorkout = async () => {
   // Check and unlock badges
   await store.dispatch('gamification/checkAndUnlockBadges', { sessionData, streak });
 
-  notificationService.stopBackgroundAudio();
-  notificationService.closeNotification();
   store.dispatch('session/clearSession');
 
   showMessage('Treino finalizado! +50 XP ganhos!', 'success');
