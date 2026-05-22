@@ -57,8 +57,8 @@
       </v-btn>
 
       <v-btn to="/goals" value="goals">
-        <v-icon>mdi-target</v-icon>
-        <span>Metas</span>
+        <v-icon>mdi-chart-line</v-icon>
+        <span>Progresso</span>
       </v-btn>
     </v-bottom-navigation>
   </v-app>

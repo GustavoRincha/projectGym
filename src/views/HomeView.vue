@@ -7,6 +7,38 @@
       </v-col>
     </v-row>
 
+    <!-- Frequência de Treinos Minimalista -->
+    <v-row class="mt-0 mb-6 justify-center">
+      <div class="d-flex align-center" style="gap: 6px;">
+        <div 
+          v-for="(day, idx) in weekDays" 
+          :key="idx"
+          :class="[
+            'week-day-circle',
+            day.hasTrained ? 'trained' : '',
+            day.isToday ? 'today' : ''
+          ]"
+          :title="day.label"
+        >
+          {{ day.char }}
+        </div>
+        
+        <v-chip
+          v-if="currentStreak > 0"
+          size="small"
+          color="secondary"
+          variant="flat"
+          class="ml-2 font-weight-bold"
+          style="height: 26px; padding: 0 8px;"
+        >
+          <template v-slot:prepend>
+            <v-icon icon="mdi-fire" size="small" class="mr-0.5"></v-icon>
+          </template>
+          {{ currentStreak }}d
+        </v-chip>
+      </div>
+    </v-row>
+
     <v-row class="mt-4">
       <v-col cols="12">
         <v-card color="surface" elevation="2" rounded="xl" class="pa-5 border border-primary">
@@ -90,6 +122,110 @@ const routines = computed(() => store.getters['workouts/allRoutines']);
 const history = computed(() => store.getters['history/allSessions']);
 const lastSession = computed(() => store.getters['history/lastSession']);
 
+// Calcula os dias da semana atual (Segunda a Domingo) e verifica se o usuário treinou neles
+const weekDays = computed(() => {
+  const list = [];
+  const today = new Date();
+  
+  // Obtém a Segunda-feira da semana atual
+  const dayOfWeek = today.getDay(); // 0 = Domingo, 1 = Segunda...
+  const distanceToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() + distanceToMonday);
+  monday.setHours(0, 0, 0, 0);
+
+  const dayLabels = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+  const dayChars = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
+
+  // Conjunto de datas treinadas no formato YYYY-MM-DD
+  const trainedDates = new Set(
+    history.value.map(session => {
+      const d = new Date(session.date);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    })
+  );
+
+  for (let i = 0; i < 7; i++) {
+    const currentDay = new Date(monday);
+    currentDay.setDate(monday.getDate() + i);
+    
+    const key = `${currentDay.getFullYear()}-${String(currentDay.getMonth() + 1).padStart(2, '0')}-${String(currentDay.getDate()).padStart(2, '0')}`;
+    const hasTrained = trainedDates.has(key);
+    
+    const isToday = 
+      currentDay.getDate() === today.getDate() && 
+      currentDay.getMonth() === today.getMonth() && 
+      currentDay.getFullYear() === today.getFullYear();
+
+    list.push({
+      label: dayLabels[i],
+      char: dayChars[i],
+      hasTrained,
+      isToday
+    });
+  }
+
+  return list;
+});
+
+// Contagem de treinos na semana atual
+const weeklyFrequencyCount = computed(() => {
+  return weekDays.value.filter(d => d.hasTrained).length;
+});
+
+// Contagem de treinos no mês atual
+const monthlyFrequencyCount = computed(() => {
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth();
+  
+  return history.value.filter(session => {
+    const d = new Date(session.date);
+    return d.getFullYear() === currentYear && d.getMonth() === currentMonth;
+  }).length;
+});
+
+// Streak de dias seguidos treinando (contando até hoje ou ontem)
+const currentStreak = computed(() => {
+  if (history.value.length === 0) return 0;
+  
+  const trainedDates = Array.from(new Set(
+    history.value.map(session => {
+      const d = new Date(session.date);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    })
+  )).sort((a, b) => new Date(b) - new Date(a));
+
+  if (trainedDates.length === 0) return 0;
+
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  const yesterdayKey = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+
+  if (!trainedDates.includes(todayKey) && !trainedDates.includes(yesterdayKey)) {
+    return 0;
+  }
+
+  let streak = 0;
+  let checkDate = trainedDates.includes(todayKey) ? today : yesterday;
+
+  while (true) {
+    const key = `${checkDate.getFullYear()}-${String(checkDate.getMonth() + 1).padStart(2, '0')}-${String(checkDate.getDate()).padStart(2, '0')}`;
+    if (trainedDates.includes(key)) {
+      streak++;
+      checkDate = new Date(checkDate);
+      checkDate.setDate(checkDate.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+
+  return streak;
+});
+
 // Smart logic to suggest the next workout based on daysOfWeek or history
 const suggestedRoutine = computed(() => {
   if (routines.value.length === 0) return null;
@@ -136,5 +272,34 @@ const startWorkout = (id) => {
 .border-dashed {
   border-style: dashed !important;
   border-width: 1px;
+}
+.week-day-circle {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.4);
+  background-color: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+}
+.week-day-circle.trained {
+  background-color: rgba(0, 230, 118, 0.12) !important;
+  color: rgb(var(--v-theme-primary)) !important;
+  border-color: rgba(0, 230, 118, 0.4) !important;
+  font-weight: 700;
+}
+.week-day-circle.today {
+  border-color: rgb(var(--v-theme-secondary)) !important;
+  border-width: 1.5px;
+}
+.week-day-circle.trained.today {
+  background-color: rgba(0, 230, 118, 0.18) !important;
+  border-color: rgb(var(--v-theme-secondary)) !important;
 }
 </style>

@@ -100,11 +100,23 @@
                 </v-chip>
               </div>
 
-              <v-row class="font-weight-bold text-caption text-medium-emphasis mb-2">
+              <v-row class="font-weight-bold text-caption text-medium-emphasis mb-2 align-center">
                 <v-col cols="2">Série</v-col>
                 <v-col cols="4">Kg</v-col>
                 <v-col cols="4">Reps</v-col>
-                <v-col cols="2" class="text-center"><v-icon icon="mdi-check"></v-icon></v-col>
+                <v-col cols="2" class="text-center d-flex justify-center align-center py-0">
+                  <v-btn
+                    icon
+                    variant="text"
+                    size="x-small"
+                    :color="allSetsCompleted(ex) ? 'success' : 'medium-emphasis'"
+                    @click="toggleAllSets(ex)"
+                    class="my-n2"
+                    title="Marcar/Desmarcar todas"
+                  >
+                    <v-icon :icon="allSetsCompleted(ex) ? 'mdi-check-all' : 'mdi-check'" size="small"></v-icon>
+                  </v-btn>
+                </v-col>
               </v-row>
 
               <v-row
@@ -126,25 +138,28 @@
                   </v-chip>
                 </v-col>
                 <v-col cols="4">
-                  <v-text-field
-                    v-model.number="ex.performed[setIndex - 1].weight"
-                    type="number"
-                    density="compact"
-                    hide-details
-                    variant="outlined"
-                    :bg-color="isFailureSet(ex, setIndex) ? 'rgba(255,109,0,0.1)' : 'background'"
-                  ></v-text-field>
+                  <div
+                    class="custom-input-box text-center cursor-pointer"
+                    :class="{ 'failure-set-bg': isFailureSet(ex, setIndex) }"
+                    @click="openScrollPicker(ex, setIndex - 1)"
+                  >
+                    <span class="text-body-1 font-weight-bold">
+                      {{ ex.performed[setIndex - 1].weight !== null && ex.performed[setIndex - 1].weight !== undefined ? ex.performed[setIndex - 1].weight : '0' }}
+                    </span>
+                    <span class="text-caption text-medium-emphasis ml-1">kg</span>
+                  </div>
                 </v-col>
                 <v-col cols="4">
-                  <v-text-field
-                    v-model.number="ex.performed[setIndex - 1].reps"
-                    type="number"
-                    density="compact"
-                    hide-details
-                    variant="outlined"
-                    :bg-color="isFailureSet(ex, setIndex) ? 'rgba(255,109,0,0.1)' : 'background'"
-                    :placeholder="isFailureSet(ex, setIndex) ? 'Falha' : ''"
-                  ></v-text-field>
+                  <div
+                    class="custom-input-box text-center cursor-pointer"
+                    :class="{ 'failure-set-bg': isFailureSet(ex, setIndex) }"
+                    @click="openScrollPicker(ex, setIndex - 1)"
+                  >
+                    <span class="text-body-1 font-weight-bold">
+                      {{ ex.performed[setIndex - 1].reps !== null && ex.performed[setIndex - 1].reps !== undefined ? ex.performed[setIndex - 1].reps : '0' }}
+                    </span>
+                    <span class="text-caption text-medium-emphasis ml-1">reps</span>
+                  </div>
                 </v-col>
                 <v-col cols="2" class="text-center">
                   <v-checkbox-btn
@@ -449,6 +464,117 @@
 
     <!-- Dialog de Guia de Execução -->
     <ExerciseGuideDialog v-model="guideDialog" :exercise-name="selectedExerciseForGuide" />
+
+    <!-- Scroll Picker Dialog -->
+    <v-dialog v-model="showPicker" max-width="340" persistent>
+      <v-card color="white" class="scroll-picker-card rounded-xl pa-4" style="color: #121212 !important;">
+        <!-- Header: Centered Exercise Name with Close button absolute on right -->
+        <div class="position-relative d-flex justify-center align-center mb-4 pt-1" style="min-height: 48px;">
+          <div class="text-subtitle-1 font-weight-bold text-center text-dark-charcoal px-8" style="line-height: 1.3; color: #1C1C1E !important;">
+            {{ pickerExercise?.name }} <span class="text-grey-dark font-weight-medium">({{ pickerSetIndex + 1 }}/{{ pickerExercise?.setsMax }})</span>
+          </div>
+          <v-btn 
+            icon="mdi-close" 
+            variant="text" 
+            size="small" 
+            color="black" 
+            @click="showPicker = false"
+            class="position-absolute"
+            style="right: -8px; top: -8px;"
+          ></v-btn>
+        </div>
+
+        <!-- Wheel Picker Container -->
+        <div class="wheel-picker-container">
+          <!-- Highlight bar/pills background -->
+          <div class="wheel-picker-highlight-overlay">
+            <div class="highlight-pill reps-pill">
+              <span class="pill-label">REPS</span>
+            </div>
+            <div class="highlight-pill weight-pill">
+              <span class="pill-label">KG</span>
+            </div>
+          </div>
+
+          <!-- Picker Columns -->
+          <div class="wheel-picker-columns">
+            <!-- Reps column -->
+            <div class="wheel-column" style="width: 120px;">
+              <div class="wheel-scroll" ref="repsScrollEl" @scroll="handleScroll($event, 'reps')">
+                <div class="wheel-padding"></div>
+                <div 
+                  v-for="rep in repsOptions" 
+                  :key="rep" 
+                  class="wheel-item reps-item"
+                  :class="{ 'active': selectedReps === rep }"
+                  @click="scrollToValue('reps', rep)"
+                >
+                  {{ rep }}
+                </div>
+                <div class="wheel-padding"></div>
+              </div>
+            </div>
+
+            <!-- Weight columns container (integer + dot + decimal) -->
+            <div class="wheel-weight-container" style="width: 150px; display: flex; align-items: center; justify-content: center;">
+              <!-- Weight Integer column -->
+              <div class="wheel-column weight-int-column" style="width: 65px;">
+                <div class="wheel-scroll" ref="weightIntScrollEl" @scroll="handleScroll($event, 'weightInt')">
+                  <div class="wheel-padding"></div>
+                  <div 
+                    v-for="wInt in weightIntOptions" 
+                    :key="wInt" 
+                    class="wheel-item"
+                    :class="{ 'active': selectedWeightInteger === wInt }"
+                    @click="scrollToValue('weightInt', wInt)"
+                  >
+                    {{ wInt }}
+                  </div>
+                  <div class="wheel-padding"></div>
+                </div>
+              </div>
+
+              <!-- Separator dot -->
+              <div class="wheel-separator">.</div>
+
+              <!-- Weight Decimal column -->
+              <div class="wheel-column weight-dec-column" style="width: 45px;">
+                <div class="wheel-scroll" ref="weightDecScrollEl" @scroll="handleScroll($event, 'weightDec')">
+                  <div class="wheel-padding"></div>
+                  <div 
+                    v-for="wDec in weightDecOptions" 
+                    :key="wDec" 
+                    class="wheel-item"
+                    :class="{ 'active': selectedWeightDecimal === wDec }"
+                    @click="scrollToValue('weightDec', wDec)"
+                  >
+                    {{ wDec }}
+                  </div>
+                  <div class="wheel-padding"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="text-caption font-weight-black text-center mb-4 text-uppercase tracking-wide text-grey-dark" style="font-size: 11px !important;">
+          Treinos Personalizados por Objetivo
+        </div>
+
+        <!-- Save Button -->
+        <v-btn
+          block
+          color="#00E676"
+          height="48"
+          rounded="pill"
+          class="text-none font-weight-bold text-white finish-picker-btn elevation-0"
+          @click="savePickerValue"
+          style="background: #00E676 !important; font-size: 15px;"
+        >
+          SALVAR
+        </v-btn>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -811,4 +937,284 @@ const finishWorkout = async () => {
     router.push('/history');
   }, 1500);
 };
+
+// State for Scroll Picker
+const showPicker = ref(false);
+const pickerExercise = ref(null);
+const pickerSetIndex = ref(0);
+const selectedReps = ref(10);
+const selectedWeightInteger = ref(60);
+const selectedWeightDecimal = ref(0);
+
+const repsScrollEl = ref(null);
+const weightIntScrollEl = ref(null);
+const weightDecScrollEl = ref(null);
+
+const repsOptions = Array.from({ length: 100 }, (_, i) => i + 1);
+const weightIntOptions = Array.from({ length: 501 }, (_, i) => i);
+const weightDecOptions = Array.from({ length: 10 }, (_, i) => i);
+
+const openScrollPicker = (ex, index) => {
+  pickerExercise.value = ex;
+  pickerSetIndex.value = index;
+  
+  const currentSet = ex.performed[index] || { reps: 10, weight: 0 };
+  
+  selectedReps.value = currentSet.reps || 10;
+  const weight = currentSet.weight || 0;
+  selectedWeightInteger.value = Math.floor(weight);
+  selectedWeightDecimal.value = Math.round((weight - Math.floor(weight)) * 10);
+  if (selectedWeightDecimal.value > 9) {
+    selectedWeightDecimal.value = 0;
+    selectedWeightInteger.value += 1;
+  }
+  
+  showPicker.value = true;
+  
+  setTimeout(() => {
+    syncScrollPositions();
+  }, 150);
+};
+
+const syncScrollPositions = () => {
+  if (repsScrollEl.value) {
+    const repsIdx = repsOptions.indexOf(selectedReps.value);
+    if (repsIdx !== -1) {
+      repsScrollEl.value.scrollTop = repsIdx * 40;
+    }
+  }
+  if (weightIntScrollEl.value) {
+    const intIdx = weightIntOptions.indexOf(selectedWeightInteger.value);
+    if (intIdx !== -1) {
+      weightIntScrollEl.value.scrollTop = intIdx * 40;
+    }
+  }
+  if (weightDecScrollEl.value) {
+    const decIdx = weightDecOptions.indexOf(selectedWeightDecimal.value);
+    if (decIdx !== -1) {
+      weightDecScrollEl.value.scrollTop = decIdx * 40;
+    }
+  }
+};
+
+const handleScroll = (event, type) => {
+  const el = event.target;
+  const scrollTop = el.scrollTop;
+  const index = Math.round(scrollTop / 40);
+  
+  if (type === 'reps') {
+    const val = repsOptions[index];
+    if (val !== undefined && val !== selectedReps.value) {
+      selectedReps.value = val;
+    }
+  } else if (type === 'weightInt') {
+    const val = weightIntOptions[index];
+    if (val !== undefined && val !== selectedWeightInteger.value) {
+      selectedWeightInteger.value = val;
+    }
+  } else if (type === 'weightDec') {
+    const val = weightDecOptions[index];
+    if (val !== undefined && val !== selectedWeightDecimal.value) {
+      selectedWeightDecimal.value = val;
+    }
+  }
+};
+
+const scrollToValue = (type, value) => {
+  if (type === 'reps') {
+    selectedReps.value = value;
+    const idx = repsOptions.indexOf(value);
+    if (idx !== -1 && repsScrollEl.value) {
+      repsScrollEl.value.scrollTo({ top: idx * 40, behavior: 'smooth' });
+    }
+  } else if (type === 'weightInt') {
+    selectedWeightInteger.value = value;
+    const idx = weightIntOptions.indexOf(value);
+    if (idx !== -1 && weightIntScrollEl.value) {
+      weightIntScrollEl.value.scrollTo({ top: idx * 40, behavior: 'smooth' });
+    }
+  } else if (type === 'weightDec') {
+    selectedWeightDecimal.value = value;
+    const idx = weightDecOptions.indexOf(value);
+    if (idx !== -1 && weightDecScrollEl.value) {
+      weightDecScrollEl.value.scrollTo({ top: idx * 40, behavior: 'smooth' });
+    }
+  }
+};
+
+const savePickerValue = () => {
+  if (pickerExercise.value && pickerSetIndex.value !== null) {
+    const newWeight = parseFloat(`${selectedWeightInteger.value}.${selectedWeightDecimal.value}`);
+    const newReps = selectedReps.value;
+    
+    const set = pickerExercise.value.performed[pickerSetIndex.value];
+    if (set) {
+      set.weight = newWeight;
+      set.reps = newReps;
+      set.completed = true;
+    }
+  }
+  showPicker.value = false;
+};
+
+const allSetsCompleted = (ex) => {
+  return ex.performed && ex.performed.every(s => s.completed);
+};
+
+const toggleAllSets = (ex) => {
+  if (!ex.performed) return;
+  const targetState = !allSetsCompleted(ex);
+  ex.performed.forEach(s => {
+    s.completed = targetState;
+  });
+};
 </script>
+
+<style scoped>
+.custom-input-box {
+  background: #1E1E1E;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  height: 40px;
+  line-height: 38px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+  user-select: none;
+}
+.custom-input-box:hover {
+  border-color: rgba(var(--v-theme-primary), 0.5);
+  background: rgba(255, 255, 255, 0.02);
+}
+.custom-input-box:active {
+  background: rgba(255, 255, 255, 0.05);
+}
+.failure-set-bg {
+  background: rgba(255, 109, 0, 0.1) !important;
+  border-color: rgba(255, 109, 0, 0.3) !important;
+}
+
+/* Scroll Picker styling */
+.scroll-picker-card {
+  box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.3) !important;
+  font-family: inherit;
+}
+.text-dark-charcoal {
+  color: #1C1C1E !important;
+}
+.text-grey-dark {
+  color: #8E8E93 !important;
+}
+.wheel-picker-container {
+  position: relative;
+  height: 200px;
+  margin: 16px 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+.wheel-picker-highlight-overlay {
+  position: absolute;
+  top: 80px;
+  left: 0;
+  right: 0;
+  height: 40px;
+  pointer-events: none;
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  padding: 0 12px;
+}
+.highlight-pill {
+  height: 40px;
+  background-color: #F2F2F7;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 12px;
+}
+.reps-pill {
+  width: 120px;
+}
+.weight-pill {
+  width: 150px;
+}
+.pill-label {
+  font-size: 11px;
+  font-weight: 800;
+  color: #8E8E93;
+  letter-spacing: 0.5px;
+}
+.wheel-picker-columns {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);
+}
+.wheel-weight-container {
+  height: 100%;
+  position: relative;
+}
+.wheel-column {
+  height: 100%;
+  position: relative;
+}
+.wheel-scroll {
+  height: 100%;
+  overflow-y: scroll;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.wheel-scroll::-webkit-scrollbar {
+  display: none;
+}
+.wheel-padding {
+  height: 80px;
+}
+.wheel-item {
+  height: 40px;
+  line-height: 40px;
+  text-align: center;
+  scroll-snap-align: center;
+  font-size: 18px;
+  font-weight: 500;
+  color: #C7C7CC;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+.wheel-item.active {
+  font-size: 24px;
+  font-weight: 800;
+  color: #1C1C1E;
+}
+.reps-item {
+  text-align: left;
+  padding-left: 24px;
+}
+.weight-int-column .wheel-item {
+  text-align: right;
+  padding-right: 4px;
+}
+.weight-dec-column .wheel-item {
+  text-align: left;
+  padding-left: 4px;
+}
+.wheel-separator {
+  font-size: 22px;
+  font-weight: 800;
+  color: #1C1C1E;
+  height: 40px;
+  line-height: 34px;
+  user-select: none;
+  pointer-events: none;
+  width: 12px;
+  text-align: center;
+}
+</style>
