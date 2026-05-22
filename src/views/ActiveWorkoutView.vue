@@ -453,11 +453,12 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, watch } from 'vue';
+import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 import ExerciseGuideDialog from '@/components/ExerciseGuideDialog.vue';
 import { groupExercises, parseMachine } from '@/utils/workoutHelpers';
+import { mediaSessionService } from '@/services/mediaSessionService';
 
 const route = useRoute();
 const router = useRouter();
@@ -502,6 +503,93 @@ const formattedTime = computed(() => {
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 });
 
+// Encontra o exercício e a série ativos atuais
+const getActiveExerciseAndSet = () => {
+  if (!sessionExercises.value || sessionExercises.value.length === 0) {
+    return { name: 'Sem Exercícios', setInfo: '-' };
+  }
+
+  // Encontra o primeiro exercício que ainda tem séries incompletas
+  const activeEx = sessionExercises.value.find(ex => {
+    const completedCount = ex.performed.filter(s => s.completed).length;
+    return completedCount < ex.setsMax;
+  });
+
+  if (!activeEx) {
+    return { name: 'Treino Concluído!', setInfo: 'Finalizar' };
+  }
+
+  // Encontra o index da primeira série incompleta
+  const currentSetIndex = activeEx.performed.findIndex(s => !s.completed) + 1;
+  const totalSets = activeEx.setsMax;
+
+  return {
+    name: activeEx.name,
+    setInfo: `${currentSetIndex}/${totalSets}`
+  };
+};
+
+// Marca a próxima série pendente como concluída (usado pelo botão físico Next de mídia)
+const marcarProximaSerieComoConcluida = () => {
+  if (!sessionExercises.value || sessionExercises.value.length === 0) return;
+
+  const activeEx = sessionExercises.value.find(ex => {
+    const completedCount = ex.performed.filter(s => s.completed).length;
+    return completedCount < ex.setsMax;
+  });
+
+  if (activeEx) {
+    const incompleteSet = activeEx.performed.find(s => !s.completed);
+    if (incompleteSet) {
+      incompleteSet.completed = true;
+      
+      // Se era a última série deste exercício, expande o próximo grupo se aplicável
+      const completedCountAfter = activeEx.performed.filter(s => s.completed).length;
+      if (completedCountAfter === activeEx.setsMax) {
+        const currentGroupIndex = groupedExercises.value.findIndex(g => g.exercises.some(e => e.id === activeEx.id));
+        if (currentGroupIndex !== -1 && currentGroupIndex + 1 < groupedExercises.value.length) {
+          const nextGroup = groupedExercises.value[currentGroupIndex + 1];
+          if (!activePanel.value.includes(nextGroup.id)) {
+            activePanel.value = [...activePanel.value, nextGroup.id];
+          }
+        }
+      }
+    }
+  }
+};
+
+// Desmarca a última série que foi concluída (usado pelo botão físico Prev de mídia)
+const desmarcarSerieAnterior = () => {
+  if (!sessionExercises.value || sessionExercises.value.length === 0) return;
+
+  let activeEx = null;
+  let completedSet = null;
+
+  // Busca do último exercício para o primeiro
+  for (let i = sessionExercises.value.length - 1; i >= 0; i--) {
+    const ex = sessionExercises.value[i];
+    const revIndex = [...ex.performed].reverse().findIndex(s => s.completed);
+    if (revIndex !== -1) {
+      activeEx = ex;
+      const actualIndex = ex.performed.length - 1 - revIndex;
+      completedSet = ex.performed[actualIndex];
+      break;
+    }
+  }
+
+  if (completedSet) {
+    completedSet.completed = false;
+  }
+};
+
+// Monitora o tempo decorrido e atualiza a tela bloqueada/central de notificações
+watch(elapsedTime, () => {
+  if (store.getters['session/isActive']) {
+    const { name, setInfo } = getActiveExerciseAndSet();
+    mediaSessionService.updateLockScreen(name, setInfo, formattedTime.value);
+  }
+});
+
 onMounted(() => {
   const isActive = store.getters['session/isActive'];
   const activeId = store.getters['session/routineId'];
@@ -526,6 +614,18 @@ onMounted(() => {
       activePanel.value = [groupedExercises.value[0].id];
     }
   }
+
+  // Ativa a Media Session e vincula os controles físicos do player
+  mediaSessionService.startBackgroundMode();
+  mediaSessionService.setupControls({
+    onNextTrack: marcarProximaSerieComoConcluida,
+    onPreviousTrack: desmarcarSerieAnterior
+  });
+});
+
+onUnmounted(() => {
+  // Desativa o áudio de fundo ao sair da tela
+  mediaSessionService.stopBackgroundMode();
 });
 
 // Sincroniza qualquer alteração no formulário com o estado global (para persistência no localStorage)
@@ -709,6 +809,7 @@ const cancelWorkout = () => {
 
 const confirmCancel = () => {
   cancelDialog.value = false;
+  mediaSessionService.stopBackgroundMode();
   store.dispatch('session/clearSession');
   router.push('/');
 };
@@ -777,6 +878,7 @@ const finishWorkout = async () => {
   // Check and unlock badges
   await store.dispatch('gamification/checkAndUnlockBadges', { sessionData, streak });
 
+  mediaSessionService.stopBackgroundMode();
   store.dispatch('session/clearSession');
 
   showMessage('Treino finalizado! +50 XP ganhos!', 'success');
