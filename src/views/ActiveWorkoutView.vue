@@ -19,110 +19,156 @@
 
       <v-expansion-panels v-model="activePanel" multiple variant="accordion">
         <v-expansion-panel
-          v-for="(ex, index) in sessionExercises"
-          :key="ex.id"
+          v-for="(group, groupIndex) in groupedExercises"
+          :key="group.id"
+          :value="group.id"
           class="mb-2 bg-surface"
+          :class="{ 'border-l-4 border-l-secondary pl-2': group.isBiset }"
         >
           <v-expansion-panel-title>
             <div>
-              <div class="font-weight-bold">{{ index + 1 }}. {{ ex.name }}</div>
-              <div class="text-caption text-medium-emphasis" v-if="ex.machine">
-                <v-icon icon="mdi-tools" size="x-small" class="mr-1"></v-icon>{{ ex.machine }}
+              <div v-if="group.isBiset" class="font-weight-black text-secondary text-caption uppercase mb-1">
+                <v-icon icon="mdi-link-variant" size="x-small" class="mr-1"></v-icon>
+                Bloco Bi-Set
               </div>
-              <div class="text-caption mt-1">
-                <v-chip v-if="ex.failureSets > 0 && ex.failureSets === ex.setsMax" size="x-small" color="secondary" class="mr-1">Todas até a Falha</v-chip>
+              <div class="font-weight-bold">
+                <template v-if="group.isBiset">
+                  {{ group.exercises.map(e => e.name).join(' + ') }}
+                </template>
                 <template v-else>
-                  <span class="text-primary font-weight-medium">{{ ex.repsMin }}–{{ ex.repsMax }} reps</span>
-                  <v-chip v-if="ex.failureSets > 0" size="x-small" color="secondary" class="ml-1">
-                    Últim{{ ex.failureSets > 1 ? `as ${ex.failureSets}` : 'a' }} até a falha
+                  {{ groupIndex + 1 }}. {{ group.exercises[0].name }}
+                </template>
+              </div>
+              <div class="text-caption text-medium-emphasis" v-if="!group.isBiset && group.exercises[0].cleanMachine">
+                <v-icon icon="mdi-tools" size="x-small" class="mr-1"></v-icon>{{ group.exercises[0].cleanMachine }}
+              </div>
+              <div class="text-caption text-medium-emphasis" v-else-if="group.isBiset">
+                <v-icon icon="mdi-tools" size="x-small" class="mr-1"></v-icon>
+                {{ group.exercises.map(e => e.cleanMachine || 'Peso Corporal').join(' + ') }}
+              </div>
+              <div class="text-caption mt-1" v-if="!group.isBiset">
+                <v-chip v-if="group.exercises[0].failureSets > 0 && group.exercises[0].failureSets === group.exercises[0].setsMax" size="x-small" color="secondary" class="mr-1">Todas até a Falha</v-chip>
+                <template v-else>
+                  <span class="text-primary font-weight-medium">{{ group.exercises[0].repsMin }}–{{ group.exercises[0].repsMax }} reps</span>
+                  <v-chip v-if="group.exercises[0].failureSets > 0" size="x-small" color="secondary" class="ml-1">
+                    Últim{{ group.exercises[0].failureSets > 1 ? `as ${group.exercises[0].failureSets}` : 'a' }} até a falha
                   </v-chip>
                 </template>
               </div>
             </div>
             <v-spacer></v-spacer>
             <v-btn
-              v-if="ex.name"
+              v-if="!group.isBiset && group.exercises[0].name"
               icon="mdi-help-circle-outline"
               variant="text"
               size="small"
               color="primary"
               class="mr-1"
-              @click.stop="openGuide(ex.name)"
+              @click.stop="openGuide(group.exercises[0].name)"
             ></v-btn>
-            <v-chip size="small" :color="isExerciseComplete(ex) ? 'success' : 'default'" class="mr-2">
-              {{ completedSetsCount(ex) }}/{{ ex.setsMax }}
+            <v-chip size="small" :color="isGroupComplete(group) ? 'success' : 'default'" class="mr-2">
+              {{ getGroupCompletionText(group) }}
             </v-chip>
           </v-expansion-panel-title>
           
           <v-expansion-panel-text>
-            <v-row class="font-weight-bold text-caption text-medium-emphasis mb-2">
-              <v-col cols="2">Série</v-col>
-              <v-col cols="4">Kg</v-col>
-              <v-col cols="4">Reps</v-col>
-              <v-col cols="2" class="text-center"><v-icon icon="mdi-check"></v-icon></v-col>
-            </v-row>
+            <div v-for="(ex, exIdx) in group.exercises" :key="ex.id" :class="{ 'mt-6 pt-6 border-t border-dashed': exIdx > 0 }">
+              <!-- Nome do Exercício (Exibe apenas se for Bi-Set) -->
+              <div v-if="group.isBiset" class="d-flex align-center justify-space-between mb-3 px-1">
+                <span class="text-subtitle-2 font-weight-black text-secondary d-flex align-center">
+                  <v-icon icon="mdi-play-circle-outline" class="mr-2" size="small"></v-icon>
+                  {{ ex.name }}
+                  <span class="text-caption text-medium-emphasis ml-2" v-if="ex.cleanMachine || ex.machine">
+                    ({{ ex.cleanMachine || ex.machine }})
+                  </span>
+                </span>
+                <v-btn
+                  v-if="ex.name"
+                  icon="mdi-help-circle-outline"
+                  variant="text"
+                  size="small"
+                  color="primary"
+                  @click.stop="openGuide(ex.name)"
+                ></v-btn>
+              </div>
 
-            <v-row
-              v-for="setIndex in Number(ex.setsMax || 0)"
-              :key="setIndex"
-              class="align-center mb-1"
-              :class="{ 'failure-set-row': isFailureSet(ex, setIndex) }"
-            >
-              <v-col cols="2">
-                <div class="font-weight-bold">{{ setIndex }}</div>
-                <v-chip
-                  v-if="isFailureSet(ex, setIndex)"
-                  color="secondary"
-                  size="x-small"
-                  variant="tonal"
-                  class="mt-1 px-1"
-                >
-                  <v-icon icon="mdi-fire" size="x-small"></v-icon>
+              <!-- Detalhes do Exercício se for Bi-Set -->
+              <div v-if="group.isBiset" class="text-caption text-medium-emphasis mb-2 px-1">
+                <span class="text-primary font-weight-medium mr-2">{{ ex.repsMin }}–{{ ex.repsMax }} reps</span>
+                <v-chip v-if="ex.failureSets > 0" size="x-small" color="secondary">
+                  Últim{{ ex.failureSets > 1 ? `as ${ex.failureSets}` : 'a' }} até a falha
                 </v-chip>
-              </v-col>
-              <v-col cols="4">
-                <v-text-field
-                  v-model.number="ex.performed[setIndex - 1].weight"
-                  type="number"
-                  density="compact"
-                  hide-details
-                  variant="outlined"
-                  :bg-color="isFailureSet(ex, setIndex) ? 'rgba(255,109,0,0.1)' : 'background'"
-                ></v-text-field>
-              </v-col>
-              <v-col cols="4">
-                <v-text-field
-                  v-model.number="ex.performed[setIndex - 1].reps"
-                  type="number"
-                  density="compact"
-                  hide-details
-                  variant="outlined"
-                  :bg-color="isFailureSet(ex, setIndex) ? 'rgba(255,109,0,0.1)' : 'background'"
-                  :placeholder="isFailureSet(ex, setIndex) ? 'Falha' : ''"
-                ></v-text-field>
-              </v-col>
-              <v-col cols="2" class="text-center">
-                <v-checkbox-btn
-                  v-model="ex.performed[setIndex - 1].completed"
-                  color="success"
-                  class="d-inline-flex"
-                ></v-checkbox-btn>
-              </v-col>
-            </v-row>
+              </div>
 
-            <!-- Observações do Exercício -->
-            <v-textarea
-              v-model="ex.notes"
-              label="Observações do Exercício"
-              placeholder="Como foi a execução?"
-              variant="outlined"
-              density="compact"
-              rows="1"
-              auto-grow
-              class="mt-4"
-              hide-details
-              prepend-inner-icon="mdi-pencil-outline"
-            ></v-textarea>
+              <v-row class="font-weight-bold text-caption text-medium-emphasis mb-2">
+                <v-col cols="2">Série</v-col>
+                <v-col cols="4">Kg</v-col>
+                <v-col cols="4">Reps</v-col>
+                <v-col cols="2" class="text-center"><v-icon icon="mdi-check"></v-icon></v-col>
+              </v-row>
+
+              <v-row
+                v-for="setIndex in Number(ex.setsMax || 0)"
+                :key="setIndex"
+                class="align-center mb-1"
+                :class="{ 'failure-set-row': isFailureSet(ex, setIndex) }"
+              >
+                <v-col cols="2">
+                  <div class="font-weight-bold">{{ setIndex }}</div>
+                  <v-chip
+                    v-if="isFailureSet(ex, setIndex)"
+                    color="secondary"
+                    size="x-small"
+                    variant="tonal"
+                    class="mt-1 px-1"
+                  >
+                    <v-icon icon="mdi-fire" size="x-small"></v-icon>
+                  </v-chip>
+                </v-col>
+                <v-col cols="4">
+                  <v-text-field
+                    v-model.number="ex.performed[setIndex - 1].weight"
+                    type="number"
+                    density="compact"
+                    hide-details
+                    variant="outlined"
+                    :bg-color="isFailureSet(ex, setIndex) ? 'rgba(255,109,0,0.1)' : 'background'"
+                  ></v-text-field>
+                </v-col>
+                <v-col cols="4">
+                  <v-text-field
+                    v-model.number="ex.performed[setIndex - 1].reps"
+                    type="number"
+                    density="compact"
+                    hide-details
+                    variant="outlined"
+                    :bg-color="isFailureSet(ex, setIndex) ? 'rgba(255,109,0,0.1)' : 'background'"
+                    :placeholder="isFailureSet(ex, setIndex) ? 'Falha' : ''"
+                  ></v-text-field>
+                </v-col>
+                <v-col cols="2" class="text-center">
+                  <v-checkbox-btn
+                    v-model="ex.performed[setIndex - 1].completed"
+                    color="success"
+                    class="d-inline-flex"
+                  ></v-checkbox-btn>
+                </v-col>
+              </v-row>
+
+              <!-- Observações do Exercício -->
+              <v-textarea
+                v-model="ex.notes"
+                label="Observações do Exercício"
+                placeholder="Como foi a execução?"
+                variant="outlined"
+                density="compact"
+                rows="1"
+                auto-grow
+                class="mt-4"
+                hide-details
+                prepend-inner-icon="mdi-pencil-outline"
+              ></v-textarea>
+            </div>
           </v-expansion-panel-text>
         </v-expansion-panel>
       </v-expansion-panels>
@@ -411,6 +457,7 @@ import { ref, reactive, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 import ExerciseGuideDialog from '@/components/ExerciseGuideDialog.vue';
+import { groupExercises, parseMachine } from '@/utils/workoutHelpers';
 
 const route = useRoute();
 const router = useRouter();
@@ -428,10 +475,24 @@ const routineId = route.params.id;
 const routine = computed(() => store.getters['workouts/getRoutineById'](routineId));
 
 // State for the ongoing session
-// State for the ongoing session
 const sessionExercises = ref([]);
 const sessionCardios = computed(() => store.state.session.cardios || []);
-const activePanel = ref([0]); // Open first exercise by default
+const activePanel = ref([]);
+
+const groupedExercises = computed(() => {
+  return groupExercises(sessionExercises.value);
+});
+
+const getGroupCompletionText = (group) => {
+  if (!group.isBiset) {
+    return `${completedSetsCount(group.exercises[0])}/${group.exercises[0].setsMax}`;
+  }
+  return group.exercises.map(ex => `${completedSetsCount(ex)}/${ex.setsMax}`).join(' + ');
+};
+
+const isGroupComplete = (group) => {
+  return group.exercises.every(ex => isExerciseComplete(ex));
+};
 
 const elapsedTime = computed(() => store.getters['session/elapsedTime']);
 
@@ -461,6 +522,9 @@ onMounted(() => {
   const storedExercises = store.getters['session/exercises'];
   if (storedExercises && storedExercises.length > 0) {
     sessionExercises.value = JSON.parse(JSON.stringify(storedExercises));
+    if (groupedExercises.value.length > 0) {
+      activePanel.value = [groupedExercises.value[0].id];
+    }
   }
 });
 

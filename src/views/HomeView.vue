@@ -7,45 +7,53 @@
       </v-col>
     </v-row>
 
-    <!-- Workout Suggestion Section -->
-    <v-row class="mt-6">
+    <v-row class="mt-4">
       <v-col cols="12">
-        <v-card color="surface" elevation="2" rounded="xl" class="pa-4 border border-primary">
+        <v-card color="surface" elevation="2" rounded="xl" class="pa-5 border border-primary">
           <div class="d-flex align-center justify-space-between mb-4">
-            <span class="text-h6 font-weight-bold text-primary">
-              <v-icon icon="mdi-calendar-star" class="mr-1"></v-icon> Treino do Dia
+            <span class="text-h6 font-weight-bold text-primary d-flex align-center">
+              <v-icon icon="mdi-calendar-star" class="mr-2"></v-icon> Treino do Dia
             </span>
           </div>
           
           <div v-if="suggestedRoutine">
-            <h2 class="text-h5 mb-2">{{ suggestedRoutine.name }}</h2>
+            <h2 class="text-h5 font-weight-bold mb-1">{{ suggestedRoutine.name }}</h2>
             <p class="text-body-2 text-medium-emphasis mb-4">
-              {{ suggestedRoutine.exercises.length }} exercícios programados
+              {{ suggestedRoutine.exercises?.length || 0 }} exercícios programados
             </p>
             <v-btn color="primary" block size="large" rounded="pill" @click="startWorkout(suggestedRoutine.id)">
               Iniciar Treino
             </v-btn>
           </div>
-          <div v-else>
+          <div v-else class="text-center py-2">
             <p class="text-body-2 text-medium-emphasis mb-4">
-              Nenhum treino cadastrado ainda.
+              Nenhum treino cadastrado para hoje.
             </p>
             <v-btn color="primary" block size="large" rounded="pill" to="/workouts">
-              Criar Meu Primeiro Treino
+              Criar ou Agendar Treino
             </v-btn>
           </div>
         </v-card>
       </v-col>
     </v-row>
 
-    <!-- Manual Selection Section -->
-    <v-row class="mt-4" v-if="routines.length > 0">
+    <v-row class="mt-6" v-if="routines.length > 0">
       <v-col cols="12">
-        <h3 class="text-h6 font-weight-bold mb-3">Ou escolha outro treino:</h3>
-        <v-row>
-          <v-col cols="6" sm="4" v-for="routine in routines" :key="routine.id">
-            <v-card color="surface" elevation="1" rounded="lg" @click="startWorkout(routine.id)" class="text-center pa-4 h-100 d-flex flex-column justify-center align-center hover-card">
-              <span class="text-subtitle-1 font-weight-bold">{{ routine.name }}</span>
+        <h3 class="text-subtitle-1 font-weight-bold mb-3 text-medium-emphasis">Ou escolha outro da sua rotina:</h3>
+        <v-row dense>
+          <v-col cols="12" sm="6" md="4" v-for="routine in routines" :key="routine.id">
+            <v-card 
+              color="surface" 
+              elevation="1" 
+              rounded="lg" 
+              @click="startWorkout(routine.id)" 
+              class="text-left pa-4 h-100 d-flex align-center justify-between hover-card"
+            >
+              <div class="flex-grow-1">
+                <span class="text-body-1 font-weight-bold d-block">{{ routine.name }}</span>
+                <span class="text-caption text-medium-emphasis">{{ routine.exercises?.length || 0 }} exs</span>
+              </div>
+              <v-icon icon="mdi-chevron-right" color="medium-emphasis"></v-icon>
             </v-card>
           </v-col>
         </v-row>
@@ -54,12 +62,15 @@
     
     <v-row class="mt-6" v-if="lastSession">
       <v-col cols="12">
-        <v-card color="surface" elevation="1" rounded="lg" class="pa-4">
-          <h3 class="text-subtitle-1 font-weight-bold mb-2 text-secondary">
-            <v-icon icon="mdi-history" class="mr-1"></v-icon> Último Treino
+        <v-card color="surface" variant="outlined" rounded="lg" class="pa-4 border-dashed">
+          <h3 class="text-subtitle-2 font-weight-bold mb-2 text-secondary d-flex align-center">
+            <v-icon icon="mdi-history" class="mr-2" size="small"></v-icon> ÚLTIMO TREINO CONCLUÍDO
           </h3>
-          <p class="mb-0 text-body-2">
-            {{ lastSession.routineName }} - {{ new Date(lastSession.date).toLocaleDateString() }}
+          <p class="mb-0 text-body-2 font-weight-medium">
+            {{ lastSession.routineName }} 
+            <span class="text-medium-emphasis font-weight-regular ">
+              • {{ new Date(lastSession.date).toLocaleDateString('pt-BR') }}
+            </span>
           </p>
         </v-card>
       </v-col>
@@ -114,12 +125,16 @@ const startWorkout = (id) => {
 
 <style scoped>
 .hover-card {
-  transition: all 0.2s;
+  transition: all 0.2s ease-in-out;
   cursor: pointer;
-  border: 1px solid transparent;
+  border: 1px solid rgba(var(--v-border-color), 0.12);
 }
 .hover-card:hover {
-  border-color: #00E676;
-  background-color: #2c2c2c !important;
+  border-color: rgb(var(--v-theme-primary));
+  transform: translateY(-2px);
+}
+.border-dashed {
+  border-style: dashed !important;
+  border-width: 1px;
 }
 </style>

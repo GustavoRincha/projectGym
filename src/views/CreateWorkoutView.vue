@@ -51,10 +51,15 @@
     <!-- Step 2: Exercícios de Musculação -->
     <v-card color="surface" elevation="2" rounded="lg" class="mb-4 pa-4 border-t-4 border-t-secondary">
       <div class="d-flex justify-space-between align-center mb-4">
-        <h2 class="text-h6 font-weight-bold">Exercícios de Musculação</h2>
-        <v-btn color="secondary" size="small" variant="tonal" prepend-icon="mdi-plus" @click="addExercise">
-          Adicionar Exercício
-        </v-btn>
+        <h2 class="text-h6 font-weight-bold"></h2>
+        <div class="d-flex gap-2" style="gap: 8px;">
+          <v-btn color="secondary" size="small" variant="tonal" prepend-icon="mdi-plus" @click="addExercise">
+            Adicionar Exercício
+          </v-btn>
+          <v-btn color="accent" size="small" variant="tonal" prepend-icon="mdi-link-variant" @click="addBisetBlock">
+            Bi-Set
+          </v-btn>
+        </div>
       </div>
 
       <div v-if="musculationExercises.length === 0" class="text-center py-4 text-medium-emphasis">
@@ -62,50 +67,91 @@
       </div>
 
       <v-expansion-panels v-else v-model="openPanels" multiple variant="accordion" class="mb-4">
-        <v-expansion-panel
-          v-for="(ex, index) in musculationExercises"
-          :key="ex.id"
-          :value="ex.id"
-          class="bg-background mb-2"
-        >
-          <v-expansion-panel-title>
-            <span class="font-weight-bold">{{ index + 1 }}. {{ ex.name || 'Novo Exercício' }}</span>
-            <template v-slot:actions>
-              <v-btn
-                v-if="ex.name"
-                icon="mdi-help-circle-outline"
-                variant="text"
-                size="small"
-                color="primary"
-                class="mr-1"
-                @click.stop="openGuide(ex.name)"
-              ></v-btn>
-              <v-btn icon="mdi-delete" variant="text" size="small" color="error" class="mr-1" @click.stop="removeExerciseById(ex.id)"></v-btn>
-              <v-icon icon="mdi-chevron-down"></v-icon>
-            </template>
-          </v-expansion-panel-title>
-          
-          <v-expansion-panel-text>
-            <!-- Nome e Máquina -->
-            <v-row dense class="mt-2">
-              <v-col cols="12" sm="6">
-                <v-text-field
-                  v-model="ex.name"
-                  label="Nome do Exercício"
-                  variant="outlined"
-                  density="compact"
-                ></v-text-field>
-              </v-col>
-              <v-col cols="12" sm="6">
-                <v-combobox
-                  v-model="ex.machine"
-                  :items="commonMachines"
-                  label="Máquina / Equipamento"
-                  variant="outlined"
-                  density="compact"
-                ></v-combobox>
-              </v-col>
-            </v-row>
+        <template v-for="(ex, index) in musculationExercises" :key="ex.id">
+          <!-- Header de Bloco Bi-Set (renderiza antes do primeiro exercício do bloco) -->
+          <div
+            v-if="isBisetStart(ex, index)"
+            class="d-flex align-center justify-space-between mt-3 mb-2 px-3 py-2 rounded bg-surface border-l-4 border-l-secondary"
+            style="border: 1px dashed rgba(var(--v-theme-secondary), 0.3); border-left-width: 4px;"
+          >
+            <div class="d-flex align-center">
+              <v-icon icon="mdi-link-variant" class="mr-2 text-secondary" size="small"></v-icon>
+              <span class="text-subtitle-2 font-weight-bold text-secondary">
+                BLOCO BI-SET ({{ getBisetCount(getBisetId(ex)) }} Exercícios)
+              </span>
+            </div>
+            <div>
+              <v-btn size="x-small" color="secondary" variant="tonal" class="mr-2" prepend-icon="mdi-plus" @click="addExerciseToBiset(getBisetId(ex))">
+                Adicionar
+              </v-btn>
+              <v-btn size="x-small" color="error" variant="text" prepend-icon="mdi-link-off" @click="ungroupBiset(getBisetId(ex))">
+                Desfazer Bloco
+              </v-btn>
+            </div>
+          </div>
+
+          <v-expansion-panel
+            :value="ex.id"
+            class="bg-background mb-2"
+            :class="{ 'border-l-4 border-l-secondary pl-2': getBisetId(ex) }"
+          >
+            <v-expansion-panel-title>
+              <span class="font-weight-bold">
+                <template v-if="getBisetId(ex)">
+                  <v-icon icon="mdi-link-variant" size="small" class="mr-1 text-secondary"></v-icon>
+                  [Bi-Set #{{ getBisetIndex(ex, index) }}]
+                </template>
+                {{ index + 1 }}. {{ ex.name || 'Novo Exercício' }}
+              </span>
+              <template v-slot:actions>
+                <v-btn
+                  v-if="!getBisetId(ex)"
+                  icon="mdi-link-variant"
+                  variant="text"
+                  size="small"
+                  color="secondary"
+                  class="mr-1"
+                  title="Criar Bi-Set com o próximo"
+                  @click.stop="makeBiset(ex)"
+                ></v-btn>
+                <v-btn
+                  v-if="ex.name"
+                  icon="mdi-help-circle-outline"
+                  variant="text"
+                  size="small"
+                  color="primary"
+                  class="mr-1"
+                  @click.stop="openGuide(ex.name)"
+                ></v-btn>
+                <v-btn icon="mdi-delete" variant="text" size="small" color="error" class="mr-1" @click.stop="removeExerciseById(ex.id)"></v-btn>
+                <v-icon icon="mdi-chevron-down"></v-icon>
+              </template>
+            </v-expansion-panel-title>
+            
+            <v-expansion-panel-text>
+              <!-- Nome e Máquina -->
+              <v-row dense class="mt-2">
+                <v-col cols="12" sm="6">
+                  <v-combobox
+                    v-model="ex.name"
+                    :items="exerciseSuggestions"
+                    label="Nome do Exercício"
+                    variant="outlined"
+                    density="compact"
+                    hide-no-data
+                  ></v-combobox>
+                </v-col>
+                <v-col cols="12" sm="6">
+                  <v-combobox
+                    :model-value="ex.cleanMachine"
+                    @update:model-value="val => updateExerciseMachine(ex, val)"
+                    :items="commonMachines"
+                    label="Máquina / Equipamento"
+                    variant="outlined"
+                    density="compact"
+                  ></v-combobox>
+                </v-col>
+              </v-row>
 
             <!-- Séries -->
             <v-row dense>
@@ -274,6 +320,7 @@
 
           </v-expansion-panel-text>
         </v-expansion-panel>
+        </template>
       </v-expansion-panels>
     </v-card>
 
@@ -406,6 +453,8 @@ import { ref, reactive, computed, onMounted, onUnmounted } from 'vue';
 import { useStore } from 'vuex';
 import { useRouter, useRoute, onBeforeRouteLeave } from 'vue-router';
 import ExerciseGuideDialog from '@/components/ExerciseGuideDialog.vue';
+import { parseMachine, formatMachine } from '@/utils/workoutHelpers';
+import { getExerciseSuggestions } from '@/services/exerciseDatabaseService';
 
 const store = useStore();
 const router = useRouter();
@@ -463,6 +512,8 @@ const workout = reactive({
   exercises: []
 });
 
+const exerciseSuggestions = ref([]);
+
 // Leave/Dirty State refs
 const originalWorkoutData = ref('');
 const isSaved = ref(false);
@@ -492,6 +543,12 @@ const cardioOptions = [
   'Outro'
 ];
 
+const initializeCleanMachines = () => {
+  workout.exercises.forEach(ex => {
+    ex.cleanMachine = parseMachine(ex.machine).name;
+  });
+};
+
 // If in edit mode, load existing routine data into workout
 onMounted(() => {
   if (isEditMode.value) {
@@ -504,6 +561,7 @@ onMounted(() => {
       workout.split = clone.split || 'ABC';
       workout.daysOfWeek = clone.daysOfWeek || [];
       workout.exercises = clone.exercises || [];
+      initializeCleanMachines();
       // Open all panels so user can see the exercises immediately
       openPanels.value = workout.exercises.map(ex => ex.id);
     }
@@ -511,6 +569,11 @@ onMounted(() => {
   
   // Store the stringified representation of the workout at mount time
   originalWorkoutData.value = JSON.stringify(workout);
+
+  // Carrega as sugestões de exercícios de forma assíncrona
+  getExerciseSuggestions().then(suggestions => {
+    exerciseSuggestions.value = suggestions;
+  });
 
   // Register browser beforeunload event listener
   window.addEventListener('beforeunload', handleBeforeUnload);
@@ -550,6 +613,7 @@ const addExercise = () => {
     id: newId,
     name: '',
     machine: '',
+    cleanMachine: '',
     setsMin: 3,
     setsMax: 4,
     // Campos de reps
@@ -558,7 +622,7 @@ const addExercise = () => {
     failureSets: 0, // 0 = nenhuma série até a falha; N = as últimas N séries são até a falha
     // Peso + progressão
     weight: 0,
-    progressionType: 'fixed',
+    progressionType: 'none',
     progressionValue: 2.5,
     progressionFrequency: 'weekly',
     progressionPerSet: 0,
@@ -566,6 +630,159 @@ const addExercise = () => {
 
   // Auto-abre o painel do exercício recém-adicionado
   openPanels.value = [...openPanels.value, newId];
+};
+
+const getBisetId = (ex) => {
+  return parseMachine(ex.machine).bisetId;
+};
+
+const getBisetCount = (bisetId) => {
+  if (!bisetId) return 0;
+  return workout.exercises.filter(ex => getBisetId(ex) === bisetId).length;
+};
+
+const isBisetStart = (ex, index) => {
+  const currentBisetId = getBisetId(ex);
+  if (!currentBisetId) return false;
+  if (index === 0) return true;
+  
+  const prevEx = musculationExercises.value[index - 1];
+  return getBisetId(prevEx) !== currentBisetId;
+};
+
+const getBisetIndex = (ex, index) => {
+  const currentBisetId = getBisetId(ex);
+  if (!currentBisetId) return 0;
+  
+  let count = 1;
+  for (let i = index - 1; i >= 0; i--) {
+    const prevEx = musculationExercises.value[i];
+    if (getBisetId(prevEx) === currentBisetId) {
+      count++;
+    } else {
+      break;
+    }
+  }
+  return count;
+};
+
+const updateExerciseMachine = (ex, newMachineName) => {
+  ex.cleanMachine = newMachineName || '';
+  const parsed = parseMachine(ex.machine);
+  ex.machine = formatMachine(newMachineName || '', parsed.bisetId);
+};
+
+const addBisetBlock = () => {
+  const bisetId = Date.now().toString();
+  const newId1 = Date.now().toString() + '-1';
+  const newId2 = Date.now().toString() + '-2';
+  
+  const baseEx = {
+    setsMin: 3,
+    setsMax: 4,
+    repsMin: 8,
+    repsMax: 12,
+    failureSets: 0,
+    weight: 0,
+    progressionType: 'none',
+    progressionValue: 2.5,
+    progressionFrequency: 'weekly',
+    progressionPerSet: 0,
+  };
+
+  workout.exercises.push({
+    ...baseEx,
+    id: newId1,
+    name: '',
+    machine: formatMachine('', bisetId),
+    cleanMachine: '',
+  });
+
+  workout.exercises.push({
+    ...baseEx,
+    id: newId2,
+    name: '',
+    machine: formatMachine('', bisetId),
+    cleanMachine: '',
+  });
+
+  openPanels.value = [...openPanels.value, newId1, newId2];
+};
+
+const makeBiset = (ex) => {
+  const bisetId = Date.now().toString();
+  const idx = workout.exercises.findIndex(e => e.id === ex.id);
+  if (idx !== -1) {
+    // Vincular o atual
+    ex.machine = formatMachine(parseMachine(ex.machine).name, bisetId);
+    
+    // Inserir outro imediatamente abaixo
+    const newId = Date.now().toString() + '-sub';
+    const newExercise = {
+      id: newId,
+      name: '',
+      machine: formatMachine('', bisetId),
+      cleanMachine: '',
+      setsMin: ex.setsMin,
+      setsMax: ex.setsMax,
+      repsMin: ex.repsMin,
+      repsMax: ex.repsMax,
+      failureSets: 0,
+      weight: 0,
+      progressionType: 'none',
+      progressionValue: 2.5,
+      progressionFrequency: 'weekly',
+      progressionPerSet: 0,
+    };
+    
+    workout.exercises.splice(idx + 1, 0, newExercise);
+    openPanels.value = [...openPanels.value, newId];
+  }
+};
+
+const addExerciseToBiset = (bisetId) => {
+  if (!bisetId) return;
+  
+  let lastIndex = -1;
+  for (let i = 0; i < workout.exercises.length; i++) {
+    if (getBisetId(workout.exercises[i]) === bisetId) {
+      lastIndex = i;
+    }
+  }
+
+  if (lastIndex !== -1) {
+    const refEx = workout.exercises[lastIndex];
+    const newId = Date.now().toString() + '-' + Math.random().toString(36).substr(2, 5);
+    const newExercise = {
+      id: newId,
+      name: '',
+      machine: formatMachine('', bisetId),
+      cleanMachine: '',
+      setsMin: refEx.setsMin,
+      setsMax: refEx.setsMax,
+      repsMin: refEx.repsMin,
+      repsMax: refEx.repsMax,
+      failureSets: 0,
+      weight: 0,
+      progressionType: 'none',
+      progressionValue: 2.5,
+      progressionFrequency: 'weekly',
+      progressionPerSet: 0,
+    };
+    
+    workout.exercises.splice(lastIndex + 1, 0, newExercise);
+    openPanels.value = [...openPanels.value, newId];
+  }
+};
+
+const ungroupBiset = (bisetId) => {
+  if (!bisetId) return;
+  workout.exercises.forEach(ex => {
+    if (getBisetId(ex) === bisetId) {
+      const parsed = parseMachine(ex.machine);
+      ex.machine = formatMachine(parsed.name, null);
+    }
+  });
 };
 
 const addCardio = () => {
@@ -593,7 +810,21 @@ const removeExerciseById = (id) => {
   openPanels.value = openPanels.value.filter(panelId => panelId !== id);
   const idx = workout.exercises.findIndex(ex => ex.id === id);
   if (idx !== -1) {
+    const exToRemove = workout.exercises[idx];
+    const parsed = parseMachine(exToRemove.machine);
+    const bisetId = parsed.bisetId;
+
     workout.exercises.splice(idx, 1);
+
+    // Se estava em um bi-set, limpa se sobrar apenas um órfão
+    if (bisetId) {
+      const sameGroup = workout.exercises.filter(ex => getBisetId(ex) === bisetId);
+      if (sameGroup.length === 1) {
+        const singleEx = sameGroup[0];
+        const singleParsed = parseMachine(singleEx.machine);
+        singleEx.machine = formatMachine(singleParsed.name, null);
+      }
+    }
   }
 };
 

@@ -61,15 +61,33 @@
           </v-card-item>
           
           <v-card-text>
-            <v-chip size="small" class="mr-2 mb-2 bg-background" v-for="ex in routine.exercises" :key="ex.id">
-              <span v-if="ex.machine === 'Cardio'">
-                <v-icon icon="mdi-heart-pulse" size="x-small" class="mr-1 text-secondary"></v-icon>
-                {{ ex.name }} ({{ ex.setsMax }} min)
-              </span>
-              <span v-else>
-                {{ ex.name }} ({{ ex.setsMax }}x{{ ex.repsMax }})
-              </span>
-            </v-chip>
+            <div class="d-flex flex-wrap align-center" style="gap: 8px;">
+              <template v-for="group in groupedExercisesForRoutine(routine)" :key="group.id">
+                <!-- Se for grupo Bi-Set -->
+                <div
+                  v-if="group.isBiset"
+                  class="d-inline-flex align-center px-2 py-1 rounded bg-secondary-light border border-secondary"
+                  style="gap: 4px; border-style: dashed; background-color: rgba(var(--v-theme-secondary), 0.08);"
+                >
+                  <v-icon icon="mdi-link-variant" size="x-small" class="text-secondary mr-1"></v-icon>
+                  <template v-for="(ex, exIdx) in group.exercises" :key="ex.id">
+                    <span class="text-caption font-weight-bold">{{ ex.name }}</span>
+                    <span class="text-caption text-medium-emphasis">({{ ex.setsMax }}x{{ ex.repsMax }})</span>
+                    <span v-if="exIdx < group.exercises.length - 1" class="text-caption text-secondary font-weight-bold mx-1">+</span>
+                  </template>
+                </div>
+                <!-- Exercício simples ou cardio -->
+                <v-chip v-else size="small" class="bg-background">
+                  <span v-if="group.exercises[0].machine === 'Cardio'">
+                    <v-icon icon="mdi-heart-pulse" size="x-small" class="mr-1 text-secondary"></v-icon>
+                    {{ group.exercises[0].name }} ({{ group.exercises[0].setsMax }} min)
+                  </span>
+                  <span v-else>
+                    {{ group.exercises[0].name }} ({{ group.exercises[0].setsMax }}x{{ group.exercises[0].repsMax }})
+                  </span>
+                </v-chip>
+              </template>
+            </div>
           </v-card-text>
 
           <v-divider></v-divider>
@@ -266,9 +284,14 @@ import { ref, computed } from 'vue';
 import { useStore } from 'vuex';
 import { useRouter } from 'vue-router';
 import { supabase } from '@/plugins/supabase';
+import { groupExercises } from '@/utils/workoutHelpers';
 
 const store = useStore();
 const router = useRouter();
+
+const groupedExercisesForRoutine = (routine) => {
+  return groupExercises(routine.exercises || []);
+};
 
 // Dialogs and states for sharing/importing
 const importDialog = ref(false);
