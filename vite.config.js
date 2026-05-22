@@ -10,7 +10,7 @@ export default defineConfig({
     vuetify({ autoImport: false }),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'robots.txt', 'pwa-192x192.png', 'pwa-512x512.png', 'fonts/**'],
+      includeAssets: ['favicon.ico', 'robots.txt', 'pwa-192x192.png', 'pwa-512x512.png', 'silence.wav', 'fonts/**'],
       manifest: {
         name: 'Gym Track',
         short_name: 'GymTrack',
