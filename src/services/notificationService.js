@@ -1,4 +1,38 @@
+let backgroundAudio = null;
+
 export const notificationService = {
+  // Inicializa e inicia a reprodução do áudio silencioso em segundo plano
+  startBackgroundAudio() {
+    try {
+      if (!backgroundAudio) {
+        backgroundAudio = new Audio('/silence.wav');
+        backgroundAudio.loop = true;
+      }
+      
+      if (backgroundAudio.paused) {
+        console.log('[NotificationService] Iniciando áudio silencioso em background...');
+        backgroundAudio.play().catch(error => {
+          console.warn('[NotificationService] Reprodução automática de áudio bloqueada ou falhou:', error);
+        });
+      }
+    } catch (error) {
+      console.error('[NotificationService] Erro ao iniciar áudio silencioso:', error);
+    }
+  },
+
+  // Pausa a execução do áudio silencioso
+  stopBackgroundAudio() {
+    try {
+      if (backgroundAudio && !backgroundAudio.paused) {
+        console.log('[NotificationService] Parando áudio silencioso de background...');
+        backgroundAudio.pause();
+        backgroundAudio.currentTime = 0;
+      }
+    } catch (error) {
+      console.error('[NotificationService] Erro ao parar áudio silencioso:', error);
+    }
+  },
+
   // Solicita permissão ao usuário para disparar notificações
   async requestPermission() {
     if (!('Notification' in window)) {
@@ -21,7 +55,7 @@ export const notificationService = {
   },
 
   // Dispara ou atualiza a notificação persistente do treino
-  async showWorkoutNotification(routineName, exerciseName, setInfo) {
+  async showWorkoutNotification(routineName, exerciseName, setInfo, formattedTime) {
     try {
       const hasPermission = await this.requestPermission();
       if (!hasPermission) {
@@ -34,7 +68,7 @@ export const notificationService = {
       
       const title = `🏋️‍♂️ Gym Track: ${routineName || 'Treino'}`;
       const options = {
-        body: `Exercício: ${exerciseName || 'Iniciando...'}\nSérie: ${setInfo || '-'}`,
+        body: `Duração: ${formattedTime || '00:00'}\nExercício: ${exerciseName || 'Iniciando...'}\nSérie: ${setInfo || '-'}`,
         tag: 'active-workout-session', // Garante que a notificação anterior seja substituída
         icon: '/pwa-192x192.png',
         badge: '/favicon.ico',
@@ -43,7 +77,7 @@ export const notificationService = {
         requireInteraction: true // Mantém a notificação visível na tela até ser fechada por código ou ação do usuário
       };
 
-      console.log(`[NotificationService] Exibindo notificação: ${exerciseName} (${setInfo})`);
+      console.log(`[NotificationService] Atualizando notificação [Tempo: ${formattedTime || '00:00'} | Exercício: ${exerciseName} (${setInfo})]`);
       await registration.showNotification(title, options);
     } catch (error) {
       console.error('[NotificationService] Erro ao exibir notificação local:', error);
@@ -62,3 +96,4 @@ export const notificationService = {
     }
   }
 };
+

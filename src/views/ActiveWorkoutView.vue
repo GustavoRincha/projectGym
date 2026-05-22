@@ -533,7 +533,7 @@ const getActiveExerciseAndSet = () => {
 const updateWorkoutNotification = () => {
   const { name, setInfo } = getActiveExerciseAndSet();
   const routineName = routine.value ? routine.value.name : 'Treino';
-  notificationService.showWorkoutNotification(routineName, name, setInfo);
+  notificationService.showWorkoutNotification(routineName, name, setInfo, formattedTime.value);
 };
 
 onMounted(() => {
@@ -563,11 +563,21 @@ onMounted(() => {
 
   // Dispara a notificação inicial do treino
   updateWorkoutNotification();
+
+  // Inicia o áudio silencioso em segundo plano para manter o processo do timer ativo
+  notificationService.startBackgroundAudio();
 });
 
 onUnmounted(() => {
+  // Interrompe o áudio silencioso em segundo plano
+  notificationService.stopBackgroundAudio();
   // Remove a notificação ativa ao fechar o app/tela
   notificationService.closeNotification();
+});
+
+// Sincroniza qualquer alteração no tempo decorrido para atualizar a notificação a cada segundo
+watch(elapsedTime, () => {
+  updateWorkoutNotification();
 });
 
 // Sincroniza qualquer alteração no formulário com o estado global e atualiza a notificação
@@ -752,6 +762,7 @@ const cancelWorkout = () => {
 
 const confirmCancel = () => {
   cancelDialog.value = false;
+  notificationService.stopBackgroundAudio();
   notificationService.closeNotification();
   store.dispatch('session/clearSession');
   router.push('/');
@@ -821,6 +832,7 @@ const finishWorkout = async () => {
   // Check and unlock badges
   await store.dispatch('gamification/checkAndUnlockBadges', { sessionData, streak });
 
+  notificationService.stopBackgroundAudio();
   notificationService.closeNotification();
   store.dispatch('session/clearSession');
 
