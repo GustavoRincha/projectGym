@@ -35,13 +35,15 @@ export default {
         state.elapsedTime = Math.floor((Date.now() - state.startTime) / 1000);
       }
 
-      // Increment running cardio timers
+      // Increment running cardio timers using timestamp differences to handle background/sleep/throttling
       if (state.cardios && state.cardios.length > 0) {
+        const now = Date.now();
         state.cardios = state.cardios.map(cardio => {
-          if (cardio.isRunning) {
+          if (cardio.isRunning && cardio.startTime) {
+            const secondsSinceStart = Math.floor((now - cardio.startTime) / 1000);
             return {
               ...cardio,
-              elapsedTime: (cardio.elapsedTime || 0) + 1
+              elapsedTime: (cardio.accumulatedTime || 0) + secondsSinceStart
             };
           }
           return cardio;
@@ -64,10 +66,24 @@ export default {
       if (state.cardios && state.cardios[index]) {
         state.cardios = state.cardios.map((cardio, idx) => {
           if (idx === index) {
-            return {
-              ...cardio,
-              isRunning: !cardio.isRunning
-            };
+            const isStarting = !cardio.isRunning;
+            if (isStarting) {
+              return {
+                ...cardio,
+                isRunning: true,
+                startTime: Date.now(),
+                accumulatedTime: cardio.elapsedTime || 0
+              };
+            } else {
+              const secondsSinceStart = cardio.startTime ? Math.floor((Date.now() - cardio.startTime) / 1000) : 0;
+              return {
+                ...cardio,
+                isRunning: false,
+                startTime: null,
+                accumulatedTime: 0,
+                elapsedTime: (cardio.accumulatedTime || 0) + secondsSinceStart
+              };
+            }
           }
           return cardio;
         });
@@ -80,6 +96,8 @@ export default {
             return {
               ...cardio,
               elapsedTime: 0,
+              accumulatedTime: 0,
+              startTime: null,
               isRunning: false
             };
           }
@@ -131,6 +149,8 @@ export default {
         duration: c.setsMax || 20,
         distance: c.repsMax || null,
         elapsedTime: 0,
+        accumulatedTime: 0,
+        startTime: null,
         isRunning: false
       }));
 

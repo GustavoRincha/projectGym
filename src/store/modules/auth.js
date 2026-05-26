@@ -150,6 +150,38 @@ export default {
       } finally {
         commit('SET_LOADING', false);
       }
+    },
+
+    async updateProfile({ commit, state }, { name, username }) {
+      commit('SET_LOADING', true);
+      commit('SET_ERROR', null);
+      try {
+        const currentUsername = state.user?.user_metadata?.username;
+        if (username && username !== currentUsername) {
+          const { data: userExists, error: checkError } = await supabase.rpc('check_username_exists', { p_username: username });
+          if (checkError) {
+            console.error("RPC Check Error:", checkError);
+          } else if (userExists) {
+            throw new Error('Este nome de usuário já está em uso.');
+          }
+        }
+
+        const { data, error } = await supabase.auth.updateUser({
+          data: {
+            name,
+            username
+          }
+        });
+        if (error) throw error;
+
+        commit('SET_USER', data.user);
+        return data.user;
+      } catch (error) {
+        commit('SET_ERROR', error.message);
+        throw error;
+      } finally {
+        commit('SET_LOADING', false);
+      }
     }
   }
 };

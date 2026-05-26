@@ -94,16 +94,50 @@
     
     <v-row class="mt-6" v-if="lastSession">
       <v-col cols="12">
-        <v-card color="surface" variant="outlined" rounded="lg" class="pa-4 border-dashed">
-          <h3 class="text-subtitle-2 font-weight-bold mb-2 text-secondary d-flex align-center">
-            <v-icon icon="mdi-history" class="mr-2" size="small"></v-icon> ÚLTIMO TREINO CONCLUÍDO
+        <v-card 
+          color="surface" 
+          elevation="3" 
+          rounded="xl" 
+          class="pa-5 last-session-card position-relative overflow-hidden"
+          @click="goToHistory"
+        >
+          <!-- Background sutil decorativo -->
+          <div class="card-gradient-bg"></div>
+
+          <div class="d-flex align-center justify-space-between mb-3 position-relative" style="z-index: 1;">
+            <div class="d-flex align-center">
+              <v-chip size="x-small" color="secondary" variant="flat" class="font-weight-black text-uppercase tracking-wider px-2">
+                Último Treino
+              </v-chip>
+              <span class="text-caption text-medium-emphasis ml-2 font-weight-bold">
+                {{ formatSessionDate(lastSession.date) }}
+              </span>
+            </div>
+            <v-icon icon="mdi-check-decagram" color="success" size="small"></v-icon>
+          </div>
+
+          <h3 class="text-h6 font-weight-black mb-3 text-high-emphasis position-relative" style="z-index: 1;">
+            {{ lastSession.routineName }}
           </h3>
-          <p class="mb-0 text-body-2 font-weight-medium">
-            {{ lastSession.routineName }} 
-            <span class="text-medium-emphasis font-weight-regular ">
-              • {{ new Date(lastSession.date).toLocaleDateString('pt-BR') }}
-            </span>
-          </p>
+
+          <div class="d-flex align-center flex-wrap gap-4 position-relative" style="gap: 16px; z-index: 1;">
+            <div class="d-flex align-center text-caption text-medium-emphasis">
+              <v-icon icon="mdi-clock-outline" size="small" color="primary" class="mr-1"></v-icon>
+              <span class="font-weight-medium text-high-emphasis">{{ formatDuration(lastSession.duration) }}</span>
+            </div>
+            
+            <div class="d-flex align-center text-caption text-medium-emphasis">
+              <v-icon icon="mdi-dumbbell" size="small" color="secondary" class="mr-1"></v-icon>
+              <span class="font-weight-medium text-high-emphasis">{{ lastSessionExerciseCount }} Exercícios</span>
+            </div>
+
+            <v-spacer class="hidden-xs-only"></v-spacer>
+
+            <div class="d-flex align-center text-caption text-primary font-weight-bold ml-auto cursor-pointer">
+              Ver histórico
+              <v-icon icon="mdi-chevron-right" size="small" class="ml-0.5"></v-icon>
+            </div>
+          </div>
         </v-card>
       </v-col>
     </v-row>
@@ -121,6 +155,45 @@ const router = useRouter();
 const routines = computed(() => store.getters['workouts/allRoutines']);
 const history = computed(() => store.getters['history/allSessions']);
 const lastSession = computed(() => store.getters['history/lastSession']);
+
+const lastSessionExerciseCount = computed(() => {
+  if (!lastSession.value || !lastSession.value.exercises) return 0;
+  return lastSession.value.exercises.filter(ex => !ex.isNotes).length;
+});
+
+const formatDuration = (seconds) => {
+  if (!seconds) return '0 min';
+  const mins = Math.floor(seconds / 60);
+  if (mins < 60) return `${mins} min`;
+  const hrs = Math.floor(mins / 60);
+  const remainingMins = mins % 60;
+  return remainingMins > 0 ? `${hrs}h ${remainingMins}m` : `${hrs}h`;
+};
+
+const formatSessionDate = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+
+  const isSameDay = (d1, d2) => 
+    d1.getDate() === d2.getDate() &&
+    d1.getMonth() === d2.getMonth() &&
+    d1.getFullYear() === d2.getFullYear();
+
+  if (isSameDay(date, today)) {
+    return 'Hoje';
+  } else if (isSameDay(date, yesterday)) {
+    return 'Ontem';
+  } else {
+    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  }
+};
+
+const goToHistory = () => {
+  router.push('/history');
+};
 
 // Calcula os dias da semana atual (Segunda a Domingo) e verifica se o usuário treinou neles
 const weekDays = computed(() => {
@@ -272,6 +345,26 @@ const startWorkout = (id) => {
 .border-dashed {
   border-style: dashed !important;
   border-width: 1px;
+}
+.last-session-card {
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  cursor: pointer;
+}
+.last-session-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 230, 118, 0.06) !important;
+  border-color: rgba(0, 230, 118, 0.2) !important;
+}
+.card-gradient-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(0, 230, 118, 0.03) 0%, rgba(0, 176, 255, 0.03) 100%);
+  pointer-events: none;
+  z-index: 0;
 }
 .week-day-circle {
   width: 26px;

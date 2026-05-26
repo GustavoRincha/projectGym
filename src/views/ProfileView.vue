@@ -12,8 +12,19 @@
           </span>
         </v-avatar>
         
-        <div class="text-center text-sm-left flex-grow-1">
-          <h2 class="text-h5 font-weight-bold mb-1">{{ userName }}</h2>
+        <div class="text-center text-sm-left flex-grow-1 w-100">
+          <div class="d-flex align-center justify-center justify-sm-start flex-wrap" style="gap: 8px;">
+            <h2 class="text-h5 font-weight-bold">{{ userName }}</h2>
+            <v-btn
+              icon="mdi-pencil-outline"
+              variant="text"
+              size="small"
+              color="primary"
+              class="ml-1"
+              @click="openEditProfile"
+              title="Editar Perfil"
+            ></v-btn>
+          </div>
           <p class="text-subtitle-2 text-medium-emphasis mb-2">@{{ userUsername }}</p>
           <div class="d-flex align-center justify-center justify-sm-start text-caption text-medium-emphasis">
             <v-icon icon="mdi-email-outline" size="small" class="mr-1"></v-icon>
@@ -137,11 +148,66 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Dialog de Edição de Perfil -->
+    <v-dialog v-model="editProfileDialog" max-width="400">
+      <v-card color="surface" rounded="xl" class="pa-4">
+        <v-card-title class="text-h6 font-weight-bold pt-2 px-2">Editar Perfil</v-card-title>
+        <v-card-text class="px-2 pt-2 pb-0">
+          <v-text-field
+            v-model="editForm.name"
+            label="Nome Completo"
+            variant="outlined"
+            density="comfortable"
+            class="mb-3"
+            :rules="[v => !!v || 'O nome é obrigatório']"
+          ></v-text-field>
+
+          <v-text-field
+            v-model="editForm.username"
+            label="Nome de Usuário"
+            variant="outlined"
+            density="comfortable"
+            prefix="@"
+            class="mb-1"
+            :rules="[
+              v => !!v || 'O usuário é obrigatório',
+              v => /^[a-zA-Z0-9_.]+$/.test(v) || 'Apenas letras, números, pontos e underlines são permitidos'
+            ]"
+          ></v-text-field>
+          <div v-if="editError" class="text-caption text-error px-1 mt-1 mb-2">
+            <v-icon icon="mdi-alert-circle" size="x-small" class="mr-1"></v-icon>
+            {{ editError }}
+          </div>
+        </v-card-text>
+        <v-card-actions class="px-2 pb-2">
+          <v-spacer></v-spacer>
+          <v-btn variant="text" @click="editProfileDialog = false" :disabled="editLoading">Cancelar</v-btn>
+          <v-btn
+            color="primary"
+            variant="flat"
+            @click="saveProfile"
+            :loading="editLoading"
+            :disabled="!editForm.name || !editForm.username"
+          >
+            Salvar
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Snackbar para Feedback -->
+    <v-snackbar v-model="snackbar.show" :color="snackbar.color" timeout="3000">
+      {{ snackbar.text }}
+      <template v-slot:actions>
+        <v-btn variant="text" @click="snackbar.show = false">Fechar</v-btn>
+      </template>
+    </v-snackbar>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, reactive } from 'vue';
 import { useStore } from 'vuex';
 import { useRouter } from 'vue-router';
 
@@ -150,6 +216,58 @@ const router = useRouter();
 
 const badgeDialog = ref(false);
 const selectedBadge = ref(null);
+
+// Edit Profile States
+const editProfileDialog = ref(false);
+const editLoading = ref(false);
+const editError = ref('');
+const editForm = reactive({ name: '', username: '' });
+
+const snackbar = ref({
+  show: false,
+  text: '',
+  color: 'success'
+});
+
+const showMessage = (text, color = 'success') => {
+  snackbar.value.text = text;
+  snackbar.value.color = color;
+  snackbar.value.show = true;
+};
+
+const openEditProfile = () => {
+  editForm.name = userName.value;
+  editForm.username = userUsername.value;
+  editError.value = '';
+  editProfileDialog.value = true;
+};
+
+const saveProfile = async () => {
+  if (!editForm.name.trim() || !editForm.username.trim()) return;
+
+  if (!/^[a-zA-Z0-9_.]+$/.test(editForm.username)) {
+    editError.value = 'Nome de usuário inválido. Use apenas letras, números, pontos e underlines.';
+    return;
+  }
+
+  editLoading.value = true;
+  editError.value = '';
+
+  try {
+    await store.dispatch('auth/updateProfile', {
+      name: editForm.name.trim(),
+      username: editForm.username.trim().toLowerCase()
+    });
+    
+    editProfileDialog.value = false;
+    showMessage('Perfil atualizado com sucesso!', 'success');
+  } catch (err) {
+    console.error('Error saving profile:', err);
+    editError.value = err.message || 'Erro ao atualizar o perfil. Tente novamente.';
+  } finally {
+    editLoading.value = false;
+  }
+};
 
 const user = computed(() => store.getters['auth/user']);
 const xp = computed(() => store.getters['gamification/xp']);

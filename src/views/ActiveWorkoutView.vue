@@ -456,6 +456,22 @@
       </v-card>
     </v-dialog>
 
+    <!-- Active Workout Warning Dialog -->
+    <v-dialog v-model="activeWorkoutWarningDialog" max-width="400" persistent>
+      <v-card color="surface">
+        <v-card-title class="text-h6 pt-4 px-4 font-weight-bold text-warning">
+          <v-icon icon="mdi-alert" class="mr-2"></v-icon>Treino em Andamento
+        </v-card-title>
+        <v-card-text class="px-4 text-medium-emphasis">
+          Você já possui um treino em andamento. Retornando ao treino ativo...
+        </v-card-text>
+        <v-card-actions class="px-4 pb-4">
+          <v-spacer></v-spacer>
+          <v-btn color="primary" variant="flat" @click="dismissWarningDialog">OK</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Success Snackbar -->
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" timeout="3000" location="top">
       <v-icon icon="mdi-check-circle" class="mr-2"></v-icon>
@@ -488,33 +504,16 @@
         <div class="wheel-picker-container">
           <!-- Highlight bar/pills background -->
           <div class="wheel-picker-highlight-overlay">
-            <div class="highlight-pill reps-pill">
-              <span class="pill-label">REPS</span>
-            </div>
             <div class="highlight-pill weight-pill">
               <span class="pill-label">KG</span>
+            </div>
+            <div class="highlight-pill reps-pill">
+              <span class="pill-label">REPS</span>
             </div>
           </div>
 
           <!-- Picker Columns -->
           <div class="wheel-picker-columns">
-            <!-- Reps column -->
-            <div class="wheel-column" style="width: 120px;">
-              <div class="wheel-scroll" ref="repsScrollEl" @scroll="handleScroll($event, 'reps')">
-                <div class="wheel-padding"></div>
-                <div 
-                  v-for="rep in repsOptions" 
-                  :key="rep" 
-                  class="wheel-item reps-item"
-                  :class="{ 'active': selectedReps === rep }"
-                  @click="scrollToValue('reps', rep)"
-                >
-                  {{ rep }}
-                </div>
-                <div class="wheel-padding"></div>
-              </div>
-            </div>
-
             <!-- Weight columns container (integer + dot + decimal) -->
             <div class="wheel-weight-container" style="width: 150px; display: flex; align-items: center; justify-content: center;">
               <!-- Weight Integer column -->
@@ -552,6 +551,23 @@
                   </div>
                   <div class="wheel-padding"></div>
                 </div>
+              </div>
+            </div>
+
+            <!-- Reps column -->
+            <div class="wheel-column" style="width: 120px;">
+              <div class="wheel-scroll" ref="repsScrollEl" @scroll="handleScroll($event, 'reps')">
+                <div class="wheel-padding"></div>
+                <div 
+                  v-for="rep in repsOptions" 
+                  :key="rep" 
+                  class="wheel-item reps-item"
+                  :class="{ 'active': selectedReps === rep }"
+                  @click="scrollToValue('reps', rep)"
+                >
+                  {{ rep }}
+                </div>
+                <div class="wheel-padding"></div>
               </div>
             </div>
           </div>
@@ -597,8 +613,8 @@ const openGuide = (name) => {
   guideDialog.value = true;
 };
 
-const routineId = route.params.id;
-const routine = computed(() => store.getters['workouts/getRoutineById'](routineId));
+const routineId = computed(() => route.params.id);
+const routine = computed(() => store.getters['workouts/getRoutineById'](routineId.value));
 
 // State for the ongoing session
 const sessionExercises = ref([]);
@@ -654,14 +670,14 @@ const getActiveExerciseAndSet = () => {
   };
 };
 
-onMounted(() => {
+const initWorkout = () => {
   const isActive = store.getters['session/isActive'];
   const activeId = store.getters['session/routineId'];
 
   if (isActive) {
-    if (activeId !== routineId) {
-      alert('Você já possui um treino em andamento. Retornando ao treino ativo...');
-      router.push(`/workout/${activeId}`);
+    if (activeId !== routineId.value) {
+      activeIdToRedirect.value = activeId;
+      activeWorkoutWarningDialog.value = true;
       return;
     }
   } else {
@@ -677,6 +693,26 @@ onMounted(() => {
     if (groupedExercises.value.length > 0) {
       activePanel.value = [groupedExercises.value[0].id];
     }
+  } else {
+    sessionExercises.value = [];
+  }
+};
+
+onMounted(() => {
+  initWorkout();
+});
+
+onUnmounted(() => {
+  // Limpar os timeouts de scroll ativos para evitar memory leaks
+  Object.values(scrollTimeouts).forEach(timeout => {
+    if (timeout) clearTimeout(timeout);
+  });
+});
+
+// Watch for route/id changes to re-run initialization if the component is reused
+watch(() => route.params.id, (newId) => {
+  if (newId) {
+    initWorkout();
   }
 });
 
@@ -703,6 +739,16 @@ const isFailureSet = (ex, setIndex) => {
 
 // UI State
 const cancelDialog = ref(false);
+const activeWorkoutWarningDialog = ref(false);
+const activeIdToRedirect = ref(null);
+
+const dismissWarningDialog = () => {
+  activeWorkoutWarningDialog.value = false;
+  if (activeIdToRedirect.value) {
+    router.push(`/workout/${activeIdToRedirect.value}`);
+  }
+};
+
 const snackbar = reactive({ show: false, text: '', color: 'success' });
 
 // Workout Notes
@@ -765,6 +811,8 @@ const confirmAddCardio = () => {
     duration: durationVal,
     distance: newCardioForm.distance ? Number(newCardioForm.distance) : null,
     elapsedTime: 0,
+    accumulatedTime: 0,
+    startTime: null,
     isRunning: false
   };
 
@@ -997,27 +1045,40 @@ const syncScrollPositions = () => {
   }
 };
 
+const scrollTimeouts = {
+  reps: null,
+  weightInt: null,
+  weightDec: null
+};
+
 const handleScroll = (event, type) => {
   const el = event.target;
-  const scrollTop = el.scrollTop;
-  const index = Math.round(scrollTop / 40);
   
-  if (type === 'reps') {
-    const val = repsOptions[index];
-    if (val !== undefined && val !== selectedReps.value) {
-      selectedReps.value = val;
-    }
-  } else if (type === 'weightInt') {
-    const val = weightIntOptions[index];
-    if (val !== undefined && val !== selectedWeightInteger.value) {
-      selectedWeightInteger.value = val;
-    }
-  } else if (type === 'weightDec') {
-    const val = weightDecOptions[index];
-    if (val !== undefined && val !== selectedWeightDecimal.value) {
-      selectedWeightDecimal.value = val;
-    }
+  if (scrollTimeouts[type]) {
+    clearTimeout(scrollTimeouts[type]);
   }
+  
+  scrollTimeouts[type] = setTimeout(() => {
+    const scrollTop = el.scrollTop;
+    const index = Math.round(scrollTop / 40);
+    
+    if (type === 'reps') {
+      const val = repsOptions[index];
+      if (val !== undefined && val !== selectedReps.value) {
+        selectedReps.value = val;
+      }
+    } else if (type === 'weightInt') {
+      const val = weightIntOptions[index];
+      if (val !== undefined && val !== selectedWeightInteger.value) {
+        selectedWeightInteger.value = val;
+      }
+    } else if (type === 'weightDec') {
+      const val = weightDecOptions[index];
+      if (val !== undefined && val !== selectedWeightDecimal.value) {
+        selectedWeightDecimal.value = val;
+      }
+    }
+  }, 60);
 };
 
 const scrollToValue = (type, value) => {

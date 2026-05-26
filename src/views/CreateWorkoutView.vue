@@ -435,6 +435,23 @@
       </v-card>
     </v-dialog>
 
+    <!-- Dialog para confirmação de exclusão de exercício -->
+    <v-dialog v-model="deleteExerciseConfirmDialog" max-width="400">
+      <v-card color="surface" rounded="lg">
+        <v-card-title class="text-h6 font-weight-bold pt-4 px-4 text-error">
+          <v-icon icon="mdi-delete" class="mr-2"></v-icon>Remover Exercício?
+        </v-card-title>
+        <v-card-text class="px-4 py-2 text-medium-emphasis">
+          Tem certeza de que deseja remover este exercício do treino?
+        </v-card-text>
+        <v-card-actions class="px-4 pb-4 pt-2">
+          <v-spacer></v-spacer>
+          <v-btn variant="text" @click="deleteExerciseConfirmDialog = false">Cancelar</v-btn>
+          <v-btn color="error" variant="flat" @click="confirmRemoveExercise">Remover</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Snackbar para alertas -->
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" timeout="3000">
       {{ snackbar.text }}
@@ -520,6 +537,10 @@ const isSaved = ref(false);
 const showLeaveConfirmDialog = ref(false);
 const toRoute = ref(null);
 const allowLeave = ref(false);
+
+// Delete Exercise Dialog Refs
+const deleteExerciseConfirmDialog = ref(false);
+const exerciseIdToDelete = ref(null);
 
 const isDirty = computed(() => {
   if (isSaved.value) return false;
@@ -807,6 +828,14 @@ const addCardio = () => {
 };
 
 const removeExerciseById = (id) => {
+  exerciseIdToDelete.value = id;
+  deleteExerciseConfirmDialog.value = true;
+};
+
+const confirmRemoveExercise = () => {
+  const id = exerciseIdToDelete.value;
+  if (!id) return;
+
   openPanels.value = openPanels.value.filter(panelId => panelId !== id);
   const idx = workout.exercises.findIndex(ex => ex.id === id);
   if (idx !== -1) {
@@ -826,6 +855,9 @@ const removeExerciseById = (id) => {
       }
     }
   }
+
+  deleteExerciseConfirmDialog.value = false;
+  exerciseIdToDelete.value = null;
 };
 
 // Snackbar state
