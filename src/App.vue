@@ -43,6 +43,9 @@
     <!-- Hotbar Glassmórfica Personalizada -->
     <nav v-if="showBottomNav" class="custom-hotbar-container">
       <div class="custom-hotbar">
+        <!-- Indicador Deslizante de Vidro -->
+        <div class="hotbar-indicator" :style="indicatorStyle" @pointerdown="onDragStart"></div>
+
         <router-link to="/" class="hotbar-item" :class="{ 'active': route.path === '/' }">
           <v-icon class="hotbar-icon">mdi-dumbbell</v-icon>
           <span class="hotbar-label">MEU PLANO</span>
@@ -82,6 +85,130 @@ const store = useStore();
 const router = useRouter();
 const route = useRoute();
 
+const navItems = [
+  { match: (p) => p === '/' },
+  { match: (p) => p.startsWith('/workouts') },
+  { match: (p) => p.startsWith('/goals') },
+  { match: (p) => p.startsWith('/history') },
+  { match: (p) => p.startsWith('/profile') }
+];
+
+const activeIndex = computed(() => {
+  return navItems.findIndex(item => item.match(route.path));
+});
+
+// Estados para arrasto do indicador e exibição temporária
+const isDragging = ref(false);
+const showIndicator = ref(false);
+const dragX = ref(0);
+const dragStartPageX = ref(0);
+const indicatorStartLeft = ref(0);
+const hotbarWidth = ref(0);
+const hotbarRef = ref(null);
+
+const indicatorStyle = computed(() => {
+  const visible = isDragging.value || showIndicator.value;
+  
+  if (isDragging.value) {
+    const itemWidth = hotbarWidth.value / 5;
+    const maxLeft = hotbarWidth.value - itemWidth;
+    let leftPx = indicatorStartLeft.value + dragX.value;
+    
+    // Constraints (limitar o movimento horizontal dentro da hotbar)
+    if (leftPx < 0) leftPx = 0;
+    if (leftPx > maxLeft) leftPx = maxLeft;
+    
+    return {
+      left: `${leftPx}px`,
+      opacity: 1,
+      transition: 'none', // Sem transição de mola durante o arrasto
+      transform: 'scale(1.08)', // Feedback de que a bolha foi selecionada/flutua
+      cursor: 'grabbing'
+    };
+  } else {
+    const index = activeIndex.value;
+    if (index === -1) return { opacity: 0 };
+    const left = index * 20;
+    return {
+      left: `${left}%`,
+      opacity: visible ? 1 : 0.25, // Mantém 25% de opacidade quando parado para marcar a seleção
+      transition: 'left 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease, transform 0.3s ease',
+      transform: visible ? 'scale(1)' : 'scale(0.96)' // Encolhe levemente para 0.96 quando parado
+    };
+  }
+});
+
+// Monitorar a aba ativa para exibir temporariamente a bolha durante a transição
+watch(activeIndex, (newVal, oldVal) => {
+  if (newVal !== oldVal) {
+    showIndicator.value = true;
+    setTimeout(() => {
+      if (!isDragging.value) {
+        showIndicator.value = false;
+      }
+    }, 450); // Oculta a bolha após 450ms (término do snap elástico)
+  }
+});
+
+const onDragStart = (event) => {
+  event.preventDefault();
+  
+  const hotbarEl = event.currentTarget.parentElement;
+  if (!hotbarEl) return;
+  
+  hotbarRef.value = hotbarEl;
+  hotbarWidth.value = hotbarEl.clientWidth;
+  
+  isDragging.value = true;
+  showIndicator.value = true;
+  dragX.value = 0;
+  dragStartPageX.value = event.pageX;
+  
+  const index = activeIndex.value;
+  const itemWidth = hotbarWidth.value / 5;
+  indicatorStartLeft.value = index * itemWidth;
+  
+  window.addEventListener('pointermove', onDragMove);
+  window.addEventListener('pointerup', onDragEnd);
+  window.addEventListener('pointercancel', onDragEnd);
+};
+
+const onDragMove = (event) => {
+  if (!isDragging.value) return;
+  dragX.value = event.pageX - dragStartPageX.value;
+};
+
+const onDragEnd = () => {
+  if (!isDragging.value) return;
+  
+  isDragging.value = false;
+  
+  window.removeEventListener('pointermove', onDragMove);
+  window.removeEventListener('pointerup', onDragEnd);
+  window.removeEventListener('pointercancel', onDragEnd);
+  
+  const finalLeft = indicatorStartLeft.value + dragX.value;
+  const itemWidth = hotbarWidth.value / 5;
+  
+  let targetIndex = Math.round(finalLeft / itemWidth);
+  if (targetIndex < 0) targetIndex = 0;
+  if (targetIndex > 4) targetIndex = 4;
+  
+  const paths = ['/', '/workouts', '/goals', '/history', '/profile'];
+  if (targetIndex !== activeIndex.value) {
+    router.push(paths[targetIndex]);
+  }
+  
+  // Mantém a bolha visível durante o snap final e oculta em seguida
+  setTimeout(() => {
+    if (!isDragging.value) {
+      showIndicator.value = false;
+    }
+  }, 450);
+  
+  dragX.value = 0;
+};
+
 const isAuthenticated = computed(() => store.getters['auth/isAuthenticated']);
 const isOnline = ref(navigator.onLine);
 
@@ -115,6 +242,27 @@ onMounted(() => {
   updateOnlineStatus();
 
   fetchAllData();
+
+  // Exibe o indicador brevemente ao abrir o app para onboarding visual
+  if (showBottomNav.value) {
+    showIndicator.value = true;
+    setTimeout(() => {
+      if (!isDragging.value) {
+        showIndicator.value = false;
+      }
+    }, 800);
+  }
+});
+
+watch(showBottomNav, (newVal) => {
+  if (newVal) {
+    showIndicator.value = true;
+    setTimeout(() => {
+      if (!isDragging.value) {
+        showIndicator.value = false;
+      }
+    }, 800);
+  }
 });
 
 onUnmounted(() => {
@@ -205,6 +353,40 @@ body {
   border: 1.5px solid rgba(0, 230, 118, 0.12); /* Thin glowing green border */
   padding: 6px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 15px rgba(0, 230, 118, 0.05);
+  position: relative; /* Necessário para posicionamento do indicador */
+}
+
+.hotbar-indicator {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  width: calc(20% - 6px); /* Aumentado a largura reduzindo as margens laterais para 3px */
+  margin: 0 3px;
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(10px) saturate(180%);
+  -webkit-backdrop-filter: blur(10px) saturate(180%);
+  border-radius: 100px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.4),
+    inset 0 1px 3px rgba(255, 255, 255, 0.4),
+    inset 0 -1px 3px rgba(0, 0, 0, 0.2);
+  z-index: 1;
+  transition: left 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease; /* Efeito elástico elogiado do iOS */
+  touch-action: none; /* Previne scroll nativo no celular ao arrastar a bolha */
+  cursor: grab; /* Cursor indicativo de arrastável no computador */
+}
+
+/* Reflexo de brilho na bolha de vidro 3D */
+.hotbar-indicator::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 10%;
+  width: 80%;
+  height: 35%;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0));
+  border-radius: 100px 100px 0 0;
 }
 
 .hotbar-item {
@@ -220,6 +402,8 @@ body {
   border: 1px solid transparent;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   padding: 4px 2px;
+  position: relative; /* Necessário para ordem de renderização */
+  z-index: 2; /* Renderiza sobre a bolha deslizante */
 }
 
 .hotbar-item:hover {
@@ -228,9 +412,7 @@ body {
 
 .hotbar-item.active {
   color: #FFFFFF !important;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1), 0 4px 10px rgba(0, 0, 0, 0.2);
+  pointer-events: none; /* Permite que toques/cliques passem para o indicador abaixo e iniciem o arrasto */
 }
 
 .hotbar-icon {
@@ -240,15 +422,31 @@ body {
 }
 
 .hotbar-item.active .hotbar-icon {
-  transform: scale(1.05);
+  transform: scale(1.1);
   color: #FFFFFF !important;
 }
 
 .hotbar-label {
-  font-size: 9px;
+  font-size: 8.5px; /* Reduzido ligeiramente de 9px para 8.5px para caber perfeitamente na bolha */
   font-weight: 700;
-  letter-spacing: 0.8px;
+  letter-spacing: 0.2px; /* Reduzido o espaçamento para economizar espaço horizontal */
   text-align: center;
   line-height: 1.2;
+  white-space: nowrap; /* Garante que palavras compridas nunca quebrem a linha */
+}
+
+/* Ajustes responsivos para telas pequenas de celular (evita cortar ou sobrepor textos) */
+@media (max-width: 375px) {
+  .hotbar-label {
+    font-size: 7.5px;
+    letter-spacing: 0px;
+  }
+  .hotbar-icon {
+    font-size: 20px !important;
+  }
+  .hotbar-indicator {
+    width: calc(20% - 4px); /* Menor margem lateral para expandir a bolha em celulares compactos */
+    margin: 0 2px;
+  }
 }
 </style>

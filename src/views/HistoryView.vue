@@ -15,7 +15,7 @@
         >
           <v-btn value="week" class="text-caption font-weight-bold">Esta Semana</v-btn>
           <v-btn value="month" class="text-caption font-weight-bold">Este Mês</v-btn>
-          <v-btn value="30days" class="text-caption font-weight-bold">Últimos 30d</v-btn>
+          <!-- <v-btn value="30days" class="text-caption font-weight-bold">Últimos 30d</v-btn> -->
           <v-btn value="all" class="text-caption font-weight-bold">Todos</v-btn>
         </v-btn-toggle>
       </div>

@@ -182,6 +182,43 @@ export default {
       } finally {
         commit('SET_LOADING', false);
       }
+    },
+
+    async loginWithOAuth({ commit }, { provider }) {
+      commit('SET_LOADING', true);
+      commit('SET_ERROR', null);
+      try {
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider,
+          options: {
+            redirectTo: window.location.origin
+          }
+        });
+        if (error) throw error;
+        return data;
+      } catch (error) {
+        commit('SET_ERROR', error.message);
+        throw error;
+      } finally {
+        commit('SET_LOADING', false);
+      }
+    },
+
+    async resetPassword({ commit }, { email }) {
+      commit('SET_LOADING', true);
+      commit('SET_ERROR', null);
+      try {
+        const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/login`
+        });
+        if (error) throw error;
+        return data;
+      } catch (error) {
+        commit('SET_ERROR', error.message);
+        throw error;
+      } finally {
+        commit('SET_LOADING', false);
+      }
     }
   }
 };
