@@ -37,21 +37,34 @@ export default {
     }
   },
   actions: {
-    async fetchRoutines({ commit }) {
+    async fetchRoutines({ commit, rootState }) {
       commit('SET_LOADING', true);
       commit('SET_ERROR', null);
       try {
-        // Fetch routines
+        const userId = rootState.auth?.user?.id;
+        if (!userId) {
+          commit('SET_ROUTINES', []);
+          return;
+        }
+
+        // Fetch routines belonging to this user
         const { data: routinesData, error: routinesError } = await supabase
           .from('routines')
-          .select('*');
+          .select('*')
+          .eq('user_id', userId);
         if (routinesError) throw routinesError;
 
-        // Fetch exercises
-        const { data: exercisesData, error: exercisesError } = await supabase
-          .from('exercises')
-          .select('*');
-        if (exercisesError) throw exercisesError;
+        // Fetch exercises belonging to these routines
+        let exercisesData = [];
+        const routineIds = routinesData.map(r => r.id);
+        if (routineIds.length > 0) {
+          const { data: exData, error: exercisesError } = await supabase
+            .from('exercises')
+            .select('*')
+            .in('routine_id', routineIds);
+          if (exercisesError) throw exercisesError;
+          exercisesData = exData || [];
+        }
 
         // Combine routines and exercises
         const formattedRoutines = routinesData.map(routine => {
