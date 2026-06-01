@@ -1,5 +1,5 @@
 <template>
-  <v-container class="fill-height login-container d-flex align-start align-sm-center justify-center">
+  <v-container class="fill-height login-container d-flex align-center justify-center">
     <!-- Efeitos Visuais de Fundo -->
     <div class="bg-bubble bubble-1"></div>
     <div class="bg-bubble bubble-2"></div>
@@ -7,9 +7,9 @@
     <v-card class="pa-4 pa-sm-8 elevation-8 rounded-xl glass-card" width="100%" max-width="450">
       
       <!-- Cabeçalho -->
-      <div class="text-center mb-4 mb-sm-8">
-        <v-icon icon="mdi-dumbbell" color="primary" class="mb-2 mb-sm-4 gym-icon"></v-icon>
-        <h1 class="text-h5 text-sm-h4 font-weight-bold text-white mb-1">Gym Track</h1>
+      <div class="text-center mb-3 mb-sm-8">
+        <v-icon v-if="mode === 'login' || !$vuetify.display.xs" icon="mdi-dumbbell" color="primary" class="mb-1 mb-sm-4 gym-icon"></v-icon>
+        <h1 class="text-h5 text-sm-h4 font-weight-bold text-white mb-0 mb-sm-1">Gym Track</h1>
         <p class="text-body-2 text-sm-subtitle-1 text-medium-emphasis">
           {{ subtitleText }}
         </p>
@@ -34,7 +34,8 @@
                   v => v.length >= 3 || 'Mínimo de 3 caracteres'
                 ]"
                 color="primary"
-                class="mb-3 mb-sm-4"
+                :density="$vuetify.display.xs ? 'compact' : 'default'"
+                class="mb-2 mb-sm-4"
                 autocomplete="username"
               ></v-text-field>
 
@@ -51,12 +52,13 @@
                   v => v.length >= 6 || 'Mínimo de 6 caracteres'
                 ]"
                 color="primary"
+                :density="$vuetify.display.xs ? 'compact' : 'default'"
                 class="mb-1 mb-sm-2"
                 autocomplete="current-password"
               ></v-text-field>
               
               <!-- Lembrar-me e Esqueci minha senha -->
-              <div class="d-flex align-center justify-space-between mb-3 mb-sm-4">
+              <div class="d-flex align-center justify-space-between mb-2 mb-sm-4">
                 <v-checkbox
                   v-model="rememberMe"
                   label="Lembrar-me"
@@ -87,7 +89,8 @@
                 prepend-inner-icon="mdi-account-outline"
                 :rules="[v => !!v || 'Nome é obrigatório']"
                 color="primary"
-                class="mb-3 mb-sm-4"
+                :density="$vuetify.display.xs ? 'compact' : 'default'"
+                class="mb-2 mb-sm-4"
                 autocomplete="name"
               ></v-text-field>
 
@@ -103,7 +106,8 @@
                   v => v.length >= 3 || 'Mínimo de 3 caracteres'
                 ]"
                 color="primary"
-                class="mb-3 mb-sm-4"
+                :density="$vuetify.display.xs ? 'compact' : 'default'"
+                class="mb-2 mb-sm-4"
                 autocomplete="username"
               ></v-text-field>
 
@@ -118,7 +122,8 @@
                   v => /.+@.+\..+/.test(v) || 'E-mail deve ser válido'
                 ]"
                 color="primary"
-                class="mb-3 mb-sm-4"
+                :density="$vuetify.display.xs ? 'compact' : 'default'"
+                class="mb-2 mb-sm-4"
                 autocomplete="email"
               ></v-text-field>
 
@@ -135,12 +140,13 @@
                   v => v.length >= 6 || 'Mínimo de 6 caracteres'
                 ]"
                 color="primary"
+                :density="$vuetify.display.xs ? 'compact' : 'default'"
                 class="mb-1 mb-sm-2"
                 autocomplete="new-password"
               ></v-text-field>
               
               <!-- Indicador de força de senha -->
-              <div class="mb-3 mb-sm-4 px-1">
+              <div class="mb-2 mb-sm-4 px-1">
                 <div class="d-flex justify-space-between align-center mb-1">
                   <span class="text-caption text-medium-emphasis">Força da Senha:</span>
                   <span :class="`text-caption font-weight-bold text-${passwordStrengthColor}`">{{ passwordStrengthText }}</span>
@@ -164,14 +170,15 @@
                   v => v === password || 'As senhas não coincidem'
                 ]"
                 color="primary"
-                class="mb-4 mb-sm-6"
+                :density="$vuetify.display.xs ? 'compact' : 'default'"
+                class="mb-3 mb-sm-6"
                 autocomplete="new-password"
               ></v-text-field>
             </div>
 
             <!-- Modo Esqueci Minha Senha -->
             <div v-else-if="mode === 'forgot-password'">
-              <p class="text-body-2 text-medium-emphasis mb-6">
+              <p class="text-body-2 text-medium-emphasis mb-4">
                 Digite seu e-mail abaixo. Enviaremos um link de recuperação para você redefinir sua senha.
               </p>
               
@@ -186,7 +193,8 @@
                   v => /.+@.+\..+/.test(v) || 'E-mail deve ser válido'
                 ]"
                 color="primary"
-                class="mb-4 mb-sm-6"
+                :density="$vuetify.display.xs ? 'compact' : 'default'"
+                class="mb-3 mb-sm-6"
                 autocomplete="email"
               ></v-text-field>
             </div>
@@ -199,7 +207,7 @@
           v-if="error"
           type="error"
           variant="tonal"
-          class="mb-4 mb-sm-6"
+          class="mb-3 mb-sm-6"
           density="compact"
         >
           {{ error }}
@@ -210,7 +218,7 @@
           v-if="successMessage"
           type="success"
           variant="tonal"
-          class="mb-4 mb-sm-6"
+          class="mb-3 mb-sm-6"
           density="compact"
         >
           {{ successMessage }}
@@ -222,7 +230,7 @@
           color="primary"
           block
           size="large"
-          class="text-body-1 font-weight-bold mb-3 mb-sm-4 rounded-lg"
+          class="text-body-1 font-weight-bold mb-2 mb-sm-4 rounded-lg"
           :loading="isLoading"
           :disabled="!isFormValid || isLoading"
         >
@@ -419,6 +427,7 @@ const handleSubmit = async () => {
 
 .login-container {
   min-height: 100vh;
+  min-height: 100dvh;
   background-color: #121212;
   position: relative;
   overflow-x: hidden;
