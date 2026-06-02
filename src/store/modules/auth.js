@@ -152,7 +152,7 @@ export default {
       }
     },
 
-    async updateProfile({ commit, state }, { name, username }) {
+    async updateProfile({ commit, state }, { name, username, height, birthdate, fitnessGoal }) {
       commit('SET_LOADING', true);
       commit('SET_ERROR', null);
       try {
@@ -166,11 +166,13 @@ export default {
           }
         }
 
+        const updateData = { name, username };
+        if (height !== undefined) updateData.height = height;
+        if (birthdate !== undefined) updateData.birthdate = birthdate;
+        if (fitnessGoal !== undefined) updateData.fitnessGoal = fitnessGoal;
+
         const { data, error } = await supabase.auth.updateUser({
-          data: {
-            name,
-            username
-          }
+          data: updateData
         });
         if (error) throw error;
 

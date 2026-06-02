@@ -294,44 +294,61 @@ const monthlyFrequencyCount = computed(() => {
   }).length;
 });
 
-// Streak de dias seguidos treinando (contando até hoje ou ontem)
+const getScheduledDaysOfWeek = computed(() => {
+  const scheduled = new Set();
+  routines.value.forEach(r => {
+    if (r.daysOfWeek && Array.isArray(r.daysOfWeek)) {
+      r.daysOfWeek.forEach(d => scheduled.add(d));
+    }
+  });
+  return scheduled;
+});
+
+// Streak de dias seguidos treinando (respeitando dias de descanso)
 const currentStreak = computed(() => {
   if (history.value.length === 0) return 0;
   
-  const trainedDates = Array.from(new Set(
-    history.value.map(session => {
-      const d = new Date(session.date);
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    })
-  )).sort((a, b) => new Date(b) - new Date(a));
-
-  if (trainedDates.length === 0) return 0;
-
-  const today = new Date();
-  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const sessionDateSet = new Set(history.value.map(s => {
+    const d = new Date(s.date);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }));
   
-  const yesterday = new Date(today);
-  yesterday.setDate(today.getDate() - 1);
-  const yesterdayKey = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
-
-  if (!trainedDates.includes(todayKey) && !trainedDates.includes(yesterdayKey)) {
-    return 0;
-  }
-
+  const scheduledDays = getScheduledDaysOfWeek.value;
+  const hasSchedule = scheduledDays.size > 0;
+  
   let streak = 0;
-  let checkDate = trainedDates.includes(todayKey) ? today : yesterday;
-
-  while (true) {
-    const key = `${checkDate.getFullYear()}-${String(checkDate.getMonth() + 1).padStart(2, '0')}-${String(checkDate.getDate()).padStart(2, '0')}`;
-    if (trainedDates.includes(key)) {
-      streak++;
-      checkDate = new Date(checkDate);
-      checkDate.setDate(checkDate.getDate() - 1);
+  const today = new Date();
+  let hasTrainedInStreak = false;
+  
+  for (let i = 0; i <= 365; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const dayOfWeek = d.getDay(); // 0 = Sunday, 1 = Monday...
+    
+    const trained = sessionDateSet.has(key);
+    
+    if (trained) {
+      streak += 1;
+      hasTrainedInStreak = true;
     } else {
-      break;
+      if (i === 0) {
+        // Se hoje for dia de descanso ou treino e ainda não treinou, não quebra a sequência (dia não acabou)
+        continue;
+      }
+      
+      const isRestDay = hasSchedule && !scheduledDays.has(dayOfWeek);
+      if (isRestDay) {
+        // Dia de descanso: apenas pula sem quebrar a sequência e sem somar ao streak
+        continue;
+      } else {
+        // Dia de treino obrigatório que o usuário perdeu: quebra o streak!
+        break;
+      }
     }
   }
-
+  
+  if (!hasTrainedInStreak) return 0;
   return streak;
 });
 
