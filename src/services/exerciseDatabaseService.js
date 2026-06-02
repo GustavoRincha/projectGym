@@ -173,9 +173,10 @@ export async function getExerciseDetails(exerciseName) {
   const equipmentEn = matchedExercise.equipment || '';
   const equipmentPt = TRANSLATIONS[equipmentEn.toLowerCase()] || equipmentEn;
 
+  const capName = matchedExercise.name ? matchedExercise.name.charAt(0).toUpperCase() + matchedExercise.name.slice(1) : '';
   return {
     id: matchedExercise.id,
-    name: matchedExercise.name,
+    name: capName,
     originalName: matchedExercise.name,
     gifUrl: matchedExercise.gif_url ? `${MEDIA_BASE_URL}${matchedExercise.gif_url}` : null,
     targetMuscle: targetMusclePt,
@@ -192,7 +193,8 @@ export async function getExerciseSuggestions() {
     const nameSet = new Set();
     for (const ex of exercises) {
       if (ex.name) {
-        nameSet.add(ex.name);
+        const capName = ex.name.charAt(0).toUpperCase() + ex.name.slice(1);
+        nameSet.add(capName);
       }
     }
     

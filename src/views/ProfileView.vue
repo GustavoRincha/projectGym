@@ -73,6 +73,42 @@
       </v-col>
     </v-row>
 
+    <!-- Configurações -->
+    <v-card color="surface" elevation="2" rounded="xl" class="pa-6 mb-6">
+      <h3 class="text-h6 font-weight-bold mb-4 d-flex align-center">
+        <v-icon icon="mdi-cog-outline" class="mr-2 text-primary"></v-icon>
+        Configurações
+      </h3>
+      
+      <div class="d-flex align-center justify-space-between">
+        <div style="flex: 1; min-width: 0; padding-right: 12px;">
+          <span class="text-subtitle-1 font-weight-bold text-white d-block leading-tight mb-1">Lembrete de Treino</span>
+          <span class="text-caption text-medium-emphasis d-block leading-normal">Notificações se ficar mais de 24h sem treinar</span>
+        </div>
+        <v-switch
+          v-model="notificationsEnabled"
+          color="primary"
+          hide-details
+          inset
+          @update:model-value="toggleNotifications"
+        ></v-switch>
+      </div>
+    </v-card>
+
+    <!-- Histórico de Treinos Link -->
+    <v-card color="surface" elevation="2" rounded="xl" class="pa-4 mb-6 hover-card d-flex align-center justify-space-between" @click="goToHistory">
+      <div class="d-flex align-center">
+        <v-avatar color="rgba(0, 230, 118, 0.1)" class="mr-3" size="40">
+          <v-icon icon="mdi-history" color="primary"></v-icon>
+        </v-avatar>
+        <div>
+          <span class="text-subtitle-1 font-weight-bold text-white d-block">Histórico de Treinos</span>
+          <span class="text-caption text-medium-emphasis">Veja todos os seus treinos concluídos</span>
+        </div>
+      </div>
+      <v-icon icon="mdi-chevron-right" color="medium-emphasis"></v-icon>
+    </v-card>
+
     <!-- Conquistas e Medalhas -->
     <v-card color="surface" elevation="2" rounded="xl" class="pa-6 mb-6">
       <h3 class="text-h6 font-weight-bold mb-4 d-flex align-center">
@@ -207,9 +243,10 @@
 </template>
 
 <script setup>
-import { ref, computed, reactive } from 'vue';
+import { ref, computed, reactive, onMounted } from 'vue';
 import { useStore } from 'vuex';
 import { useRouter } from 'vue-router';
+import { notificationService } from '@/services/notificationService';
 
 const store = useStore();
 const router = useRouter();
@@ -229,6 +266,52 @@ const snackbar = ref({
   color: 'success'
 });
 
+const notificationsEnabled = ref(false);
+
+onMounted(() => {
+  notificationsEnabled.value = notificationService.isEnabled();
+});
+
+const toggleNotifications = async (val) => {
+  if (val) {
+    if (!('Notification' in window)) {
+      showMessage('Notificações não são suportadas neste navegador.', 'error');
+      notificationsEnabled.value = false;
+      localStorage.setItem('gym_notifications_enabled', 'false');
+      return;
+    }
+    
+    if (Notification.permission === 'default') {
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        notificationsEnabled.value = true;
+        localStorage.setItem('gym_notifications_enabled', 'true');
+        showMessage('Notificações ativadas com sucesso!', 'success');
+        notificationService.sendNotification(
+          'Gym Track 🦾',
+          'Tudo pronto! Você receberá lembretes por aqui quando passar de 24h sem treinar.'
+        );
+      } else {
+        notificationsEnabled.value = false;
+        localStorage.setItem('gym_notifications_enabled', 'false');
+        showMessage('Permissão de notificação negada.', 'warning');
+      }
+    } else if (Notification.permission === 'denied') {
+      notificationsEnabled.value = false;
+      localStorage.setItem('gym_notifications_enabled', 'false');
+      showMessage('As notificações estão bloqueadas no seu navegador. Ative nas configurações do site.', 'warning');
+    } else {
+      notificationsEnabled.value = true;
+      localStorage.setItem('gym_notifications_enabled', 'true');
+      showMessage('Notificações ativadas!', 'success');
+    }
+  } else {
+    notificationsEnabled.value = false;
+    localStorage.setItem('gym_notifications_enabled', 'false');
+    showMessage('Lembretes de treino desativados.', 'info');
+  }
+};
+
 const showMessage = (text, color = 'success') => {
   snackbar.value.text = text;
   snackbar.value.color = color;
@@ -240,6 +323,10 @@ const openEditProfile = () => {
   editForm.username = userUsername.value;
   editError.value = '';
   editProfileDialog.value = true;
+};
+
+const goToHistory = () => {
+  router.push('/history');
 };
 
 const saveProfile = async () => {
@@ -347,6 +434,18 @@ const logout = async () => {
 </script>
 
 <style scoped>
+.hover-card {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  cursor: pointer;
+}
+
+.hover-card:hover {
+  transform: translateY(-2px);
+  border-color: rgb(var(--v-theme-primary)) !important;
+  box-shadow: 0 8px 20px rgba(0, 230, 118, 0.06) !important;
+}
+
 .xp-progress-container {
   height: 8px;
   background-color: rgba(255, 255, 255, 0.12);

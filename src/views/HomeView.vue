@@ -152,7 +152,43 @@ import { useRouter } from 'vue-router';
 const store = useStore();
 const router = useRouter();
 
-const routines = computed(() => store.getters['workouts/allRoutines']);
+const routines = computed(() => {
+  const all = [...store.getters['workouts/allRoutines']];
+  return all.sort((a, b) => {
+    const daysA = a.daysOfWeek || [];
+    const daysB = b.daysOfWeek || [];
+    
+    // Rotinas sem dias definidos vão para o final
+    if (daysA.length === 0 && daysB.length === 0) {
+      return a.name.localeCompare(b.name);
+    }
+    if (daysA.length === 0) return 1;
+    if (daysB.length === 0) return -1;
+    
+    // Mapear dias considerando Domingo (0) como o último dia da semana de treino (valor 7)
+    const mappedA = daysA.map(d => d === 0 ? 7 : d).sort((x, y) => x - y);
+    const mappedB = daysB.map(d => d === 0 ? 7 : d).sort((x, y) => x - y);
+    
+    const minA = mappedA[0];
+    const minB = mappedB[0];
+    
+    if (minA !== minB) {
+      return minA - minB;
+    }
+    
+    // Desempate pelos demais dias de treino da rotina
+    const maxLength = Math.max(mappedA.length, mappedB.length);
+    for (let i = 1; i < maxLength; i++) {
+      const valA = mappedA[i] !== undefined ? mappedA[i] : -1;
+      const valB = mappedB[i] !== undefined ? mappedB[i] : -1;
+      if (valA !== valB) {
+        return valA - valB;
+      }
+    }
+    
+    return a.name.localeCompare(b.name);
+  });
+});
 const history = computed(() => store.getters['history/allSessions']);
 const lastSession = computed(() => store.getters['history/lastSession']);
 

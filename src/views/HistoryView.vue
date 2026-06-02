@@ -22,7 +22,7 @@
 
       <!-- Exibição dos Treinos Filtrados -->
       <div v-if="filteredSessions.length > 0">
-        <v-timeline side="end" align="start" truncate-line="both">
+        <v-timeline :density="$vuetify.display.xs ? 'compact' : 'default'" side="end" align="start" truncate-line="both">
           <v-timeline-item
             v-for="session in filteredSessions"
             :key="session.id"
@@ -32,7 +32,7 @@
           >
             <v-card color="surface" elevation="2" rounded="xl" class="mb-4 overflow-hidden border border-light-trans">
               <!-- Cabeçalho do Card (Sempre visível, clicável para expandir) -->
-              <div @click="toggleSession(session.id)" class="session-header pa-4">
+              <div @click="toggleSession(session.id)" class="session-header pa-3 pa-sm-4">
                 <div class="d-flex justify-space-between align-start">
                   <div>
                     <span class="text-caption text-medium-emphasis font-weight-bold d-block mb-1">
@@ -93,7 +93,7 @@
               <v-expand-transition>
                 <div v-show="expanded[session.id] || false">
                   <v-divider></v-divider>
-                  <div class="pa-4 pt-3">
+                  <div class="pa-3 pa-sm-4 pt-3">
                     <!-- Título da seção -->
                     <h4 class="text-caption font-weight-black text-uppercase tracking-wider text-medium-emphasis mb-3">
                       Exercícios e Séries
@@ -107,13 +107,13 @@
                         class="exercise-row"
                       >
                         <div class="d-flex justify-space-between align-start">
-                          <div>
-                            <span class="text-body-2 font-weight-bold text-high-emphasis d-block">{{ ex.name }}</span>
-                            <span class="text-caption text-medium-emphasis" v-if="ex.machine">
+                          <div style="flex: 1; min-width: 0;" class="mr-2">
+                            <span class="text-body-2 font-weight-bold text-high-emphasis d-block" style="word-break: break-word;">{{ ex.name }}</span>
+                            <span class="text-caption text-medium-emphasis d-block" style="word-break: break-word;" v-if="ex.machine">
                               Equipamento: {{ ex.machine }}
                             </span>
                           </div>
-                          <v-chip size="x-small" color="primary" variant="outlined" class="font-weight-black">
+                          <v-chip size="x-small" color="primary" variant="outlined" class="font-weight-black" style="flex-shrink: 0;">
                             {{ getCompletedSetsCount(ex) }}/{{ ex.setsMax || ex.sets || (ex.performed ? ex.performed.length : 0) }} séries
                           </v-chip>
                         </div>

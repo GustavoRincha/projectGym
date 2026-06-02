@@ -64,7 +64,7 @@
           <!-- Instruções Passo a Passo -->
           <div v-if="exerciseData.instructions && exerciseData.instructions.length > 0">
             <h4 class="text-subtitle-2 font-weight-bold text-medium-emphasis mb-2">Instruções de Execução:</h4>
-            <v-list density="compact" class="bg-transparent pa-0 instructions-list scrollbar-custom" style="max-height: 200px; overflow-y: auto;">
+            <v-list density="compact" class="bg-transparent pa-0 instructions-list scrollbar-custom">
               <v-list-item
                 v-for="(inst, i) in exerciseData.instructions"
                 :key="i"
@@ -81,6 +81,76 @@
               </v-list-item>
             </v-list>
           </div>
+
+          <!-- Menu de Adicionar ao Treino -->
+          <v-alert
+            v-if="successAlert"
+            type="success"
+            variant="tonal"
+            density="compact"
+            class="text-caption mt-4 mb-0"
+            rounded="lg"
+          >
+            {{ successAlert }}
+          </v-alert>
+
+          <div v-if="showAddMenu" class="mt-4 pt-3 border-t">
+            <h4 class="text-subtitle-2 font-weight-bold text-white mb-2">Adicionar a qual treino?</h4>
+            
+            <v-list density="compact" class="bg-background rounded-lg border pa-1 routines-list scrollbar-custom">
+              <!-- Option: Novo Treino -->
+              <v-list-item 
+                class="rounded-lg mb-1" 
+                color="primary" 
+                @click="addToNewWorkout"
+              >
+                <template v-slot:prepend>
+                  <v-icon icon="mdi-plus-circle-outline" color="primary"></v-icon>
+                </template>
+                <v-list-item-title class="font-weight-bold text-primary">Criar Novo Treino</v-list-item-title>
+              </v-list-item>
+              
+              <v-divider class="my-1"></v-divider>
+              
+              <!-- Options: Existentes -->
+              <template v-if="routines.length > 0">
+                <v-list-item 
+                  v-for="routine in routines" 
+                  :key="routine.id" 
+                  class="rounded-lg mb-1"
+                  @click="addToExistingWorkout(routine)"
+                >
+                  <template v-slot:prepend>
+                    <v-icon icon="mdi-dumbbell" color="secondary"></v-icon>
+                  </template>
+                  <v-list-item-title class="text-white">{{ routine.name }}</v-list-item-title>
+                  <v-list-item-subtitle class="text-caption text-medium-emphasis">
+                    {{ routine.exercises?.length || 0 }} exercícios
+                  </v-list-item-subtitle>
+                </v-list-item>
+              </template>
+              <div v-else class="text-center py-2 text-caption text-medium-emphasis">
+                Nenhum treino cadastrado.
+              </div>
+            </v-list>
+            
+            <div class="d-flex justify-end mt-2">
+              <v-btn variant="text" size="small" @click="showAddMenu = false">Cancelar</v-btn>
+            </div>
+          </div>
+
+          <v-btn
+            v-else
+            color="primary"
+            variant="flat"
+            block
+            rounded="pill"
+            prepend-icon="mdi-plus"
+            class="mt-4 font-weight-bold"
+            @click="showAddMenu = true"
+          >
+            Adicionar ao Treino
+          </v-btn>
         </div>
 
         <!-- Estado de Fallback (Exercício Não Encontrado) -->
@@ -116,6 +186,8 @@
 
 <script setup>
 import { ref, watch, computed } from 'vue';
+import { useStore } from 'vuex';
+import { useRouter } from 'vue-router';
 import { getExerciseDetails } from '@/services/exerciseDatabaseService';
 
 const props = defineProps({
@@ -132,6 +204,9 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue']);
 
+const store = useStore();
+const router = useRouter();
+
 // Bind do dialog
 const internalModel = computed({
   get: () => props.modelValue,
@@ -140,6 +215,10 @@ const internalModel = computed({
 
 const loading = ref(false);
 const exerciseData = ref(null);
+const showAddMenu = ref(false);
+const successAlert = ref('');
+
+const routines = computed(() => store.getters['workouts/allRoutines']);
 
 const fetchDetails = async () => {
   if (!props.exerciseName) {
@@ -159,16 +238,66 @@ const fetchDetails = async () => {
   }
 };
 
+const addToNewWorkout = () => {
+  const name = props.exerciseName;
+  internalModel.value = false;
+  showAddMenu.value = false;
+  router.push(`/workout/create?prefillEx=${encodeURIComponent(name)}`);
+};
+
+const addToExistingWorkout = async (routine) => {
+  try {
+    const exerciseName = props.exerciseName;
+    const cleanMachineName = exerciseData.value?.equipment || '';
+    
+    const newEx = {
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+      name: exerciseName,
+      machine: cleanMachineName,
+      setsMin: 3,
+      setsMax: 4,
+      repsMin: 8,
+      repsMax: 12,
+      failureSets: 0,
+      weight: 0,
+      progressionType: 'none',
+      progressionValue: 2.5,
+      progressionFrequency: 'weekly',
+      progressionPerSet: 0
+    };
+    
+    const updatedRoutine = {
+      ...routine,
+      exercises: [...(routine.exercises || []), newEx]
+    };
+    
+    await store.dispatch('workouts/updateRoutine', updatedRoutine);
+    
+    successAlert.value = `Adicionado a "${routine.name}" com sucesso!`;
+    showAddMenu.value = false;
+    
+    setTimeout(() => {
+      successAlert.value = '';
+    }, 3000);
+  } catch (err) {
+    console.error('Erro ao adicionar ao treino existente:', err);
+  }
+};
+
 // Observa abertura do diálogo ou mudança de exercício para recarregar
 watch(() => props.modelValue, (newVal) => {
   if (newVal) {
     fetchDetails();
+    showAddMenu.value = false;
+    successAlert.value = '';
   }
 });
 
 watch(() => props.exerciseName, () => {
   if (props.modelValue) {
     fetchDetails();
+    showAddMenu.value = false;
+    successAlert.value = '';
   }
 });
 </script>
@@ -180,8 +309,30 @@ watch(() => props.exerciseName, () => {
 }
 
 .gif-container {
-  height: 250px;
+  height: 240px;
   background-color: #121212 !important;
+}
+
+.instructions-list {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.routines-list {
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+@media (max-height: 740px) {
+  .gif-container {
+    height: 160px;
+  }
+  .instructions-list {
+    max-height: 130px;
+  }
+  .routines-list {
+    max-height: 120px;
+  }
 }
 
 .step-number {

@@ -61,7 +61,7 @@
           <span class="hotbar-label">PROGRESSO</span>
         </router-link>
 
-        <router-link to="/history" class="hotbar-item" :class="{ 'active': route.path.startsWith('/history') }">
+        <router-link to="/exercises" class="hotbar-item" :class="{ 'active': route.path.startsWith('/exercises') }">
           <v-icon class="hotbar-icon">mdi-arm-flex</v-icon>
           <span class="hotbar-label">EXERCÍCIOS</span>
         </router-link>
@@ -80,6 +80,7 @@ import { onMounted, onUnmounted, computed, watch, ref } from 'vue';
 import { useStore } from 'vuex';
 import { useRouter, useRoute } from 'vue-router';
 import { syncService } from '@/services/syncService';
+import { notificationService } from '@/services/notificationService';
 
 const store = useStore();
 const router = useRouter();
@@ -89,7 +90,7 @@ const navItems = [
   { match: (p) => p === '/' },
   { match: (p) => p.startsWith('/workouts') },
   { match: (p) => p.startsWith('/goals') },
-  { match: (p) => p.startsWith('/history') },
+  { match: (p) => p.startsWith('/exercises') },
   { match: (p) => p.startsWith('/profile') }
 ];
 
@@ -194,7 +195,7 @@ const onDragEnd = () => {
   if (targetIndex < 0) targetIndex = 0;
   if (targetIndex > 4) targetIndex = 4;
   
-  const paths = ['/', '/workouts', '/goals', '/history', '/profile'];
+  const paths = ['/', '/workouts', '/goals', '/exercises', '/profile'];
   if (targetIndex !== activeIndex.value) {
     router.push(paths[targetIndex]);
   }
@@ -314,6 +315,14 @@ const returnToSession = () => {
   }
 };
 
+// Monitorar histórico de treinos para enviar notificações de lembrete
+const sessions = computed(() => store.getters['history/allSessions'] || []);
+watch(sessions, (newSessions) => {
+  if (newSessions && newSessions.length > 0) {
+    notificationService.checkAndTriggerReminder(newSessions);
+  }
+});
+
 const logout = async () => {
   await store.dispatch('auth/logout');
   router.push('/login');
@@ -339,7 +348,7 @@ body {
   transform: translateX(-50%);
   width: 92%;
   max-width: 580px;
-  z-index: 9999;
+  z-index: 98;
 }
 
 .custom-hotbar {

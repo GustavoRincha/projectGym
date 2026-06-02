@@ -5,6 +5,7 @@ import WorkoutsView from '../views/WorkoutsView.vue';
 import ActiveWorkoutView from '../views/ActiveWorkoutView.vue';
 import CreateWorkoutView from '../views/CreateWorkoutView.vue';
 import HistoryView from '../views/HistoryView.vue';
+import ExercisesView from '../views/ExercisesView.vue';
 import GoalsView from '../views/GoalsView.vue';
 import LoginView from '../views/LoginView.vue';
 import SuggestWorkoutView from '../views/SuggestWorkoutView.vue';
@@ -57,6 +58,12 @@ const routes = [
     path: '/history',
     name: 'History',
     component: HistoryView,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/exercises',
+    name: 'Exercises',
+    component: ExercisesView,
     meta: { requiresAuth: true }
   },
   {

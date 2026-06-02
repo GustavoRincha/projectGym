@@ -101,11 +101,23 @@ export default {
     },
 
     async addRoutine({ commit, rootState }, routine) {
+      const capitalizeFirstLetter = (str) => {
+        if (!str) return '';
+        const trimmed = str.trim();
+        return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+      };
+
+      const exercisesCapitalized = (routine.exercises || []).map(ex => ({
+        ...ex,
+        name: capitalizeFirstLetter(ex.name)
+      }));
+
       // 1. Optimistic UI: Gerar ID localmente e atualizar estado
       const newRoutineId = crypto.randomUUID();
       const routineToSave = {
         ...routine,
         id: newRoutineId,
+        exercises: exercisesCapitalized,
         created_by_name: rootState.auth?.user?.user_metadata?.name || 
                          rootState.auth?.user?.user_metadata?.username || 
                          (rootState.auth?.user?.email ? rootState.auth.user.email.split('@')[0] : '') || 
@@ -124,7 +136,7 @@ export default {
         split: routineToSave.split,
         days_of_week: routineToSave.daysOfWeek || [],
         created_by_name: routineToSave.created_by_name,
-        exercises: (routineToSave.exercises || []).map(ex => ({
+        exercises: routineToSave.exercises.map(ex => ({
           // Não enviamos o 'id' do exercício: deixamos o banco de dados (Supabase) gerar automaticamente
           routine_id: newRoutineId,
           name: ex.name,
@@ -148,8 +160,20 @@ export default {
     },
 
     async updateRoutine({ commit, rootState }, routine) {
+      const capitalizeFirstLetter = (str) => {
+        if (!str) return '';
+        const trimmed = str.trim();
+        return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+      };
+
+      const exercisesCapitalized = (routine.exercises || []).map(ex => ({
+        ...ex,
+        name: capitalizeFirstLetter(ex.name)
+      }));
+
       const routineToUpdate = {
         ...routine,
+        exercises: exercisesCapitalized,
         created_by_name: rootState.auth?.user?.user_metadata?.name || 
                          rootState.auth?.user?.user_metadata?.username || 
                          (rootState.auth?.user?.email ? rootState.auth.user.email.split('@')[0] : '') || 
@@ -168,7 +192,7 @@ export default {
         split: routineToUpdate.split,
         days_of_week: routineToUpdate.daysOfWeek || [],
         created_by_name: routineToUpdate.created_by_name,
-        exercises: (routineToUpdate.exercises || []).map(ex => ({
+        exercises: routineToUpdate.exercises.map(ex => ({
           // Não enviamos o 'id' do exercício: ao atualizar, nós apagamos os antigos e recriamos novos, logo o banco gera novos IDs
           routine_id: routineToUpdate.id,
           name: ex.name,

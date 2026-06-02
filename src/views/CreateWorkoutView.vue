@@ -471,7 +471,7 @@ import { useStore } from 'vuex';
 import { useRouter, useRoute, onBeforeRouteLeave } from 'vue-router';
 import ExerciseGuideDialog from '@/components/ExerciseGuideDialog.vue';
 import { parseMachine, formatMachine } from '@/utils/workoutHelpers';
-import { getExerciseSuggestions } from '@/services/exerciseDatabaseService';
+import { getExerciseSuggestions, getExerciseDetails } from '@/services/exerciseDatabaseService';
 
 const store = useStore();
 const router = useRouter();
@@ -588,6 +588,43 @@ onMounted(() => {
     }
   }
   
+  if (!isEditMode.value && route.query.prefillEx) {
+    const exName = route.query.prefillEx;
+    const newId = Date.now().toString() + Math.random().toString(36).substr(2, 5);
+    
+    // Default exercise config
+    const prefilledEx = {
+      id: newId,
+      name: exName,
+      machine: '',
+      cleanMachine: '',
+      setsMin: 3,
+      setsMax: 4,
+      repsMin: 8,
+      repsMax: 12,
+      failureSets: 0,
+      weight: 0,
+      progressionType: 'none',
+      progressionValue: 2.5,
+      progressionFrequency: 'weekly',
+      progressionPerSet: 0,
+    };
+    
+    getExerciseDetails(exName).then(data => {
+      if (data) {
+        prefilledEx.cleanMachine = data.equipment || '';
+        prefilledEx.machine = data.equipment || '';
+      }
+    }).catch(err => {
+      console.error('Erro ao buscar detalhes para prefill:', err);
+    }).finally(() => {
+      workout.exercises.push(prefilledEx);
+      openPanels.value = [newId];
+      // Update originalWorkoutData so dirty check handles the initial load correctly
+      originalWorkoutData.value = JSON.stringify(workout);
+    });
+  }
+
   // Store the stringified representation of the workout at mount time
   originalWorkoutData.value = JSON.stringify(workout);
 
