@@ -79,6 +79,7 @@
 import { onMounted, onUnmounted, computed, watch, ref } from 'vue';
 import { useStore } from 'vuex';
 import { useRouter, useRoute } from 'vue-router';
+import { useTheme } from 'vuetify';
 import { syncService } from '@/services/syncService';
 import { notificationService } from '@/services/notificationService';
 
@@ -235,7 +236,30 @@ const fetchAllData = () => {
   }
 };
 
+const theme = useTheme();
+
 onMounted(() => {
+  // Aplicar cor tema salva
+  const savedColor = localStorage.getItem('gym_theme_primary_color');
+  if (savedColor) {
+    try {
+      theme.themes.value.gymDark.colors.primary = savedColor;
+      theme.themes.value.gymLight.colors.primary = savedColor;
+    } catch (e) {
+      console.error('Erro ao carregar cor tema salva:', e);
+    }
+  }
+
+  // Aplicar tema escuro/claro salvo
+  const savedTheme = localStorage.getItem('gym_theme_name');
+  if (savedTheme) {
+    try {
+      theme.global.name.value = savedTheme;
+    } catch (e) {
+      console.error('Erro ao carregar tema salvo:', e);
+    }
+  }
+
   window.addEventListener('online', updateOnlineStatus);
   window.addEventListener('offline', updateOnlineStatus);
   
@@ -334,7 +358,6 @@ const logout = async () => {
 body {
   margin: 0;
   font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  background-color: #121212;
 }
 .main-content-container {
   padding-bottom: 110px !important;
@@ -457,5 +480,45 @@ body {
     width: calc(20% - 4px); /* Menor margem lateral para expandir a bolha em celulares compactos */
     margin: 0 2px;
   }
+}
+
+/* Ajustes de design para o Menu Inferior (Hotbar) no Modo Claro */
+.v-theme--gymLight .custom-hotbar {
+  background: rgba(255, 255, 255, 0.8) !important;
+  border-color: rgba(0, 0, 0, 0.06) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08), 0 0 15px rgba(0, 0, 0, 0.02) !important;
+}
+
+.v-theme--gymLight .hotbar-item {
+  color: rgba(0, 0, 0, 0.54) !important;
+}
+
+.v-theme--gymLight .hotbar-item:hover {
+  color: rgba(0, 0, 0, 0.8) !important;
+}
+
+.v-theme--gymLight .hotbar-item.active {
+  color: rgb(var(--v-theme-primary)) !important;
+}
+
+.v-theme--gymLight .hotbar-indicator {
+  background: rgba(0, 0, 0, 0.05) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.08),
+    inset 0 1px 3px rgba(255, 255, 255, 0.8),
+    inset 0 -1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.v-theme--gymLight .hotbar-indicator::after {
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0));
+}
+
+.v-theme--gymLight .hotbar-icon {
+  color: inherit !important;
+}
+
+.v-theme--gymLight .hotbar-item.active .hotbar-icon {
+  color: rgb(var(--v-theme-primary)) !important;
 }
 </style>

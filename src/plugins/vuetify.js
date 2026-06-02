@@ -5,7 +5,7 @@ import * as directives from 'vuetify/directives'
 import { aliases, mdi } from 'vuetify/iconsets/mdi'
 // MDI font CSS is loaded from public/fonts/ via index.html for reliable offline caching
 
-const gymTheme = {
+const gymDark = {
   dark: true,
   colors: {
     background: '#121212',
@@ -20,13 +20,29 @@ const gymTheme = {
   },
 }
 
+const gymLight = {
+  dark: false,
+  colors: {
+    background: '#F4F6F9',
+    surface: '#FFFFFF',
+    primary: '#00E676', // Initial Green
+    secondary: '#FF6D00',
+    accent: '#2979FF',
+    error: '#FF5252',
+    info: '#2196F3',
+    success: '#4CAF50',
+    warning: '#FB8C00',
+  },
+}
+
 export default createVuetify({
   components,
   directives,
   theme: {
-    defaultTheme: 'gymTheme',
+    defaultTheme: 'gymDark',
     themes: {
-      gymTheme,
+      gymDark,
+      gymLight,
     },
   },
   icons: {

@@ -184,6 +184,27 @@ export default {
       }
     },
 
+    async updateProfilePicture({ commit }, avatarUrl) {
+      commit('SET_LOADING', true);
+      commit('SET_ERROR', null);
+      try {
+        const { data, error } = await supabase.auth.updateUser({
+          data: {
+            avatar_url: avatarUrl
+          }
+        });
+        if (error) throw error;
+
+        commit('SET_USER', data.user);
+        return data.user;
+      } catch (error) {
+        commit('SET_ERROR', error.message);
+        throw error;
+      } finally {
+        commit('SET_LOADING', false);
+      }
+    },
+
     async loginWithOAuth({ commit }, { provider }) {
       commit('SET_LOADING', true);
       commit('SET_ERROR', null);
