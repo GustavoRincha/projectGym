@@ -24,28 +24,43 @@
       </v-col>
     </v-row>
 
-    <!-- Tabs para alternar (Apenas se não houver pesquisa e não estiver dentro de um grupo) -->
+    <!-- Botões para alternar (Apenas se não houver pesquisa e não estiver dentro de um grupo) -->
     <v-row class="mb-6" v-if="!searchQuery.trim() && !selectedGroup">
-      <v-col cols="12">
-        <v-btn-toggle
-          v-model="activeTab"
-          mandatory
-          color="primary"
-          variant="tonal"
-          rounded="pill"
-          density="comfortable"
-          class="d-flex w-100"
+      <v-col cols="4" class="pa-1">
+        <v-btn
+          block
+          :variant="activeTab === 'body_part' ? 'flat' : 'tonal'"
+          :color="activeTab === 'body_part' ? 'primary' : 'on-surface'"
+          class="rounded-xl text-none font-weight-bold text-caption text-sm-body-2 py-2 border-thin"
+          height="48"
+          @click="activeTab = 'body_part'"
         >
-          <v-btn value="body_part" class="flex-grow-1 text-subtitle-2 font-weight-bold">
-            <v-icon icon="mdi-arm-flex" class="mr-2"></v-icon>Parte do Corpo
-          </v-btn>
-          <v-btn value="equipment" class="flex-grow-1 text-subtitle-2 font-weight-bold">
-            <v-icon icon="mdi-dumbbell" class="mr-2"></v-icon>Equipamento
-          </v-btn>
-          <v-btn value="favorites" class="flex-grow-1 text-subtitle-2 font-weight-bold">
-            <v-icon icon="mdi-star" class="mr-2"></v-icon>Favoritos
-          </v-btn>
-        </v-btn-toggle>
+          <v-icon icon="mdi-arm-flex" class="mr-1 mr-sm-2" size="small"></v-icon>Parte do Corpo
+        </v-btn>
+      </v-col>
+      <v-col cols="4" class="pa-1">
+        <v-btn
+          block
+          :variant="activeTab === 'equipment' ? 'flat' : 'tonal'"
+          :color="activeTab === 'equipment' ? 'primary' : 'on-surface'"
+          class="rounded-xl text-none font-weight-bold text-caption text-sm-body-2 py-2 border-thin"
+          height="48"
+          @click="activeTab = 'equipment'"
+        >
+          <v-icon icon="mdi-dumbbell" class="mr-1 mr-sm-2" size="small"></v-icon>Equipamento
+        </v-btn>
+      </v-col>
+      <v-col cols="4" class="pa-1">
+        <v-btn
+          block
+          :variant="activeTab === 'favorites' ? 'flat' : 'tonal'"
+          :color="activeTab === 'favorites' ? 'primary' : 'on-surface'"
+          class="rounded-xl text-none font-weight-bold text-caption text-sm-body-2 py-2 border-thin"
+          height="48"
+          @click="activeTab = 'favorites'"
+        >
+          <v-icon icon="mdi-star" class="mr-1 mr-sm-2" size="small"></v-icon>Favoritos
+        </v-btn>
       </v-col>
     </v-row>
 
@@ -699,5 +714,11 @@ const loadMore = () => {
 
 .bg-primary-light {
   background-color: rgba(var(--v-theme-primary), 0.12) !important;
+}
+.border-thin {
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+.v-theme--gymLight .border-thin {
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
 }
 </style>

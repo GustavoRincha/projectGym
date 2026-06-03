@@ -48,6 +48,73 @@
       </div>
     </v-card>
 
+    <!-- Card de IMC (Índice de Massa Corporal) -->
+    <v-card color="surface" elevation="2" rounded="xl" class="mb-4 pa-5 border-thin">
+      <div class="d-flex align-center mb-3">
+        <v-icon icon="mdi-scale-bathroom" class="mr-2" color="primary"></v-icon>
+        <span class="text-subtitle-1 font-weight-bold text-high-emphasis">Índice de Massa Corporal (IMC)</span>
+      </div>
+
+      <div v-if="!height" class="py-2 text-center">
+        <p class="text-body-2 text-medium-emphasis mb-3">
+          Defina sua altura no seu perfil para ver o cálculo do seu IMC.
+        </p>
+        <v-btn color="primary" variant="tonal" rounded="pill" size="small" to="/profile">
+          <v-icon icon="mdi-account-edit" start size="small"></v-icon>
+          Configurar Altura
+        </v-btn>
+      </div>
+
+      <div v-else-if="!currentWeightVal" class="py-2 text-center">
+        <p class="text-body-2 text-medium-emphasis mb-0">
+          Registre seu peso para calcular o IMC.
+        </p>
+      </div>
+
+      <div v-else>
+        <div class="d-flex justify-space-between align-center mb-4">
+          <div>
+            <div class="text-caption text-medium-emphasis">Seu IMC atual</div>
+            <div class="d-flex align-baseline">
+              <span class="text-h4 font-weight-bold mr-2">{{ imc }}</span>
+              <span :class="['text-subtitle-2 font-weight-bold', imcClassification.textColor]">
+                {{ imcClassification.label }}
+              </span>
+            </div>
+          </div>
+          <div class="text-right">
+            <div class="text-caption text-medium-emphasis">Altura</div>
+            <div class="text-subtitle-1 font-weight-bold">{{ heightInMeters }}m</div>
+          </div>
+        </div>
+
+        <!-- Barra de escala do IMC -->
+        <div class="imc-scale-container mb-2">
+          <!-- O ponteiro indicator -->
+          <div class="imc-scale-pointer" :style="{ left: `${imcPercent}%` }">
+            <div class="imc-pointer-value">{{ imc }}</div>
+            <div class="imc-pointer-arrow"></div>
+          </div>
+          <div class="imc-scale-bar"></div>
+        </div>
+
+        <!-- Rótulos da Escala -->
+        <div class="d-flex justify-space-between text-xxs text-medium-emphasis mb-4 px-1">
+          <span>Abaixo (18.5)</span>
+          <span>Normal (24.9)</span>
+          <span>Sobrepeso (29.9)</span>
+          <span>Obesidade</span>
+        </div>
+
+        <div class="d-flex align-start pa-3 bg-background rounded-lg border-thin">
+          <v-icon icon="mdi-information-outline" class="mr-2 mt-0.5" color="medium-emphasis" size="small"></v-icon>
+          <span class="text-caption text-medium-emphasis leading-tight">
+            {{ imcClassification.desc }}
+          </span>
+        </div>
+      </div>
+    </v-card>
+
     <!-- Card 1: Gráfico de Evolução de Peso -->
     <v-card color="surface" elevation="2" rounded="xl" class="mb-4 pa-5 border-thin">
       <div class="d-flex justify-space-between align-center mb-4 flex-wrap gap-2">
@@ -486,6 +553,82 @@ const latestMeasurement = computed(() => {
     : null;
 });
 
+// IMC Logic
+const user = computed(() => store.getters['auth/user']);
+const height = computed(() => user.value?.user_metadata?.height || null);
+
+const heightInMeters = computed(() => {
+  if (!height.value) return null;
+  const h = parseFloat(height.value);
+  return h > 3 ? h / 100 : h;
+});
+
+const imc = computed(() => {
+  if (!currentWeightVal.value || !heightInMeters.value) return null;
+  const h = heightInMeters.value;
+  return parseFloat((currentWeightVal.value / (h * h)).toFixed(1));
+});
+
+const imcClassification = computed(() => {
+  if (!imc.value) return null;
+  const val = imc.value;
+  if (val < 18.5) {
+    return {
+      label: 'Abaixo do Peso',
+      color: 'info',
+      textColor: 'text-info',
+      desc: 'Abaixo do peso ideal. Considere orientação nutricional ou médica para ganho de peso saudável.'
+    };
+  }
+  if (val < 25) {
+    return {
+      label: 'Peso Normal',
+      color: 'success',
+      textColor: 'text-success',
+      desc: 'Parabéns! Seu IMC indica que você está na faixa de peso considerada saudável.'
+    };
+  }
+  if (val < 30) {
+    return {
+      label: 'Sobrepeso',
+      color: 'warning',
+      textColor: 'text-warning',
+      desc: 'Atenção. Indicação de leve excesso de peso. Acompanhe sua composição corporal (% de gordura e massa magra).'
+    };
+  }
+  if (val < 35) {
+    return {
+      label: 'Obesidade Grau I',
+      color: 'error',
+      textColor: 'text-error',
+      desc: 'Alerta. Considere reavaliar sua alimentação, treinos e buscar aconselhamento profissional.'
+    };
+  }
+  if (val < 40) {
+    return {
+      label: 'Obesidade Grau II',
+      color: 'error',
+      textColor: 'text-error',
+      desc: 'Risco aumentado de complicações de saúde. Recomendado acompanhamento médico e nutricional.'
+    };
+  }
+  return {
+    label: 'Obesidade Grau III',
+    color: 'error',
+    textColor: 'text-error',
+    desc: 'Risco severo à saúde. É muito importante o acompanhamento profissional para uma estratégia de saúde adequada.'
+  };
+});
+
+const imcPercent = computed(() => {
+  if (!imc.value) return 0;
+  const val = imc.value;
+  const minImc = 15;
+  const maxImc = 40;
+  const pct = ((val - minImc) / (maxImc - minImc)) * 100;
+  return Math.min(Math.max(pct, 0), 100);
+});
+
 // Form inputs
 const newWeight = ref(null);
 const newBf = ref(null);
@@ -872,5 +1015,68 @@ const deleteWeight = (index) => {
 }
 .bg-primary-light {
   background-color: rgba(0, 230, 118, 0.1) !important;
+}
+.imc-scale-container {
+  position: relative;
+  height: 38px;
+  display: flex;
+  align-items: flex-end;
+  margin-bottom: 4px;
+}
+.imc-scale-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(
+    to right,
+    #29b6f6 0%,
+    #29b6f6 14%,
+    #66bb6a 14%,
+    #66bb6a 40%,
+    #ffa726 40%,
+    #ffa726 60%,
+    #ef5350 60%,
+    #ef5350 100%
+  );
+  width: 100%;
+}
+.imc-scale-pointer {
+  position: absolute;
+  bottom: 6px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: left 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+  z-index: 2;
+}
+.imc-pointer-value {
+  font-size: 10px;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255,255,255,0.15);
+  padding: 1px 5px;
+  border-radius: 10px;
+  color: #fff;
+  line-height: 1.2;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+.v-theme--gymLight .imc-pointer-value {
+  background: #ffffff;
+  color: #121212;
+  border-color: rgba(0,0,0,0.1);
+}
+.imc-pointer-arrow {
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid rgba(255, 255, 255, 0.85);
+  margin-top: -1px;
+}
+.v-theme--gymLight .imc-pointer-arrow {
+  border-top-color: rgba(0, 0, 0, 0.6);
+}
+.text-xxs {
+  font-size: 0.65rem !important;
 }
 </style>
