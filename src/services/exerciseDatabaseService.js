@@ -86,7 +86,9 @@ export async function getExercises() {
       try {
         exercisesCache = JSON.parse(localData);
         return exercisesCache;
-      } catch (e) {}
+      } catch (e) {
+        // ignore fallback parsing error
+      }
     }
     throw new Error('Não foi possível carregar a base de dados de exercícios.');
   }

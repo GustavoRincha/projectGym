@@ -347,10 +347,12 @@ watch(sessions, (newSessions) => {
   }
 });
 
+/*
 const logout = async () => {
   await store.dispatch('auth/logout');
   router.push('/login');
 };
+*/
 </script>
 
 <style>

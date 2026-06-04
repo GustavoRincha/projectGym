@@ -482,7 +482,7 @@
     <ExerciseGuideDialog v-model="guideDialog" :exercise-name="selectedExerciseForGuide" />
 
     <!-- Scroll Picker Dialog -->
-    <v-dialog v-model="showPicker" max-width="340" persistent>
+    <v-dialog v-model="showPicker" max-width="340" persistent scroll-strategy="none">
       <v-card color="white" class="scroll-picker-card rounded-xl pa-4" style="color: #121212 !important;">
         <!-- Header: Centered Exercise Name with Close button absolute on right -->
         <div class="position-relative d-flex justify-center align-center mb-4 pt-1" style="min-height: 48px;">
@@ -573,6 +573,35 @@
           </div>
         </div>
 
+        <!-- Fallback manual inputs to prevent locking scroll -->
+        <v-row dense class="px-1 mb-4">
+          <v-col cols="6">
+            <v-text-field
+              v-model.number="manualWeightInput"
+              label="Peso Manual (kg)"
+              type="number"
+              step="0.5"
+              min="0"
+              density="compact"
+              variant="outlined"
+              hide-details
+              color="primary"
+            ></v-text-field>
+          </v-col>
+          <v-col cols="6">
+            <v-text-field
+              v-model.number="manualRepsInput"
+              label="Reps Manual"
+              type="number"
+              min="1"
+              density="compact"
+              variant="outlined"
+              hide-details
+              color="primary"
+            ></v-text-field>
+          </v-col>
+        </v-row>
+
         <div class="text-caption font-weight-black text-center mb-4 text-uppercase tracking-wide text-grey-dark" style="font-size: 11px !important;">
           Treinos Personalizados por Objetivo
         </div>
@@ -599,7 +628,7 @@ import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 import ExerciseGuideDialog from '@/components/ExerciseGuideDialog.vue';
-import { groupExercises, parseMachine } from '@/utils/workoutHelpers';
+import { groupExercises } from '@/utils/workoutHelpers';
 
 const route = useRoute();
 const router = useRouter();
@@ -644,6 +673,7 @@ const formattedTime = computed(() => {
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 });
 
+/*
 // Encontra o exercício e a série ativos atuais
 const getActiveExerciseAndSet = () => {
   if (!sessionExercises.value || sessionExercises.value.length === 0) {
@@ -669,6 +699,7 @@ const getActiveExerciseAndSet = () => {
     setInfo: `${currentSetIndex}/${totalSets}`
   };
 };
+*/
 
 const initWorkout = () => {
   const isActive = store.getters['session/isActive'];
@@ -994,6 +1025,10 @@ const selectedReps = ref(10);
 const selectedWeightInteger = ref(60);
 const selectedWeightDecimal = ref(0);
 
+// Manual inputs fallback to prevent scrolling locks
+const manualWeightInput = ref(0);
+const manualRepsInput = ref(10);
+
 const repsScrollEl = ref(null);
 const weightIntScrollEl = ref(null);
 const weightDecScrollEl = ref(null);
@@ -1016,6 +1051,10 @@ const openScrollPicker = (ex, index) => {
     selectedWeightDecimal.value = 0;
     selectedWeightInteger.value += 1;
   }
+
+  // Set initial manual inputs
+  manualWeightInput.value = parseFloat(weight.toFixed(1));
+  manualRepsInput.value = selectedReps.value;
   
   showPicker.value = true;
   
@@ -1066,36 +1105,65 @@ const handleScroll = (event, type) => {
       const val = repsOptions[index];
       if (val !== undefined && val !== selectedReps.value) {
         selectedReps.value = val;
+        manualRepsInput.value = val;
       }
     } else if (type === 'weightInt') {
       const val = weightIntOptions[index];
       if (val !== undefined && val !== selectedWeightInteger.value) {
         selectedWeightInteger.value = val;
+        manualWeightInput.value = parseFloat(`${val}.${selectedWeightDecimal.value}`);
       }
     } else if (type === 'weightDec') {
       const val = weightDecOptions[index];
       if (val !== undefined && val !== selectedWeightDecimal.value) {
         selectedWeightDecimal.value = val;
+        manualWeightInput.value = parseFloat(`${selectedWeightInteger.value}.${val}`);
       }
     }
   }, 60);
 };
 
+// Sync manual inputs when users type in them
+watch(manualWeightInput, (newVal) => {
+  if (newVal === null || newVal === undefined || isNaN(newVal)) return;
+  const val = Math.max(0, newVal);
+  const integerPart = Math.floor(val);
+  const decimalPart = Math.round((val - integerPart) * 10);
+  
+  if (selectedWeightInteger.value !== integerPart || selectedWeightDecimal.value !== decimalPart) {
+    selectedWeightInteger.value = Math.min(integerPart, 500);
+    selectedWeightDecimal.value = Math.min(decimalPart, 9);
+    syncScrollPositions();
+  }
+});
+
+watch(manualRepsInput, (newVal) => {
+  if (newVal === null || newVal === undefined || isNaN(newVal)) return;
+  const val = Math.max(1, Math.min(Math.round(newVal), 100));
+  if (selectedReps.value !== val) {
+    selectedReps.value = val;
+    syncScrollPositions();
+  }
+});
+
 const scrollToValue = (type, value) => {
   if (type === 'reps') {
     selectedReps.value = value;
+    manualRepsInput.value = value;
     const idx = repsOptions.indexOf(value);
     if (idx !== -1 && repsScrollEl.value) {
       repsScrollEl.value.scrollTo({ top: idx * 40, behavior: 'smooth' });
     }
   } else if (type === 'weightInt') {
     selectedWeightInteger.value = value;
+    manualWeightInput.value = parseFloat(`${value}.${selectedWeightDecimal.value}`);
     const idx = weightIntOptions.indexOf(value);
     if (idx !== -1 && weightIntScrollEl.value) {
       weightIntScrollEl.value.scrollTo({ top: idx * 40, behavior: 'smooth' });
     }
   } else if (type === 'weightDec') {
     selectedWeightDecimal.value = value;
+    manualWeightInput.value = parseFloat(`${selectedWeightInteger.value}.${value}`);
     const idx = weightDecOptions.indexOf(value);
     if (idx !== -1 && weightDecScrollEl.value) {
       weightDecScrollEl.value.scrollTo({ top: idx * 40, behavior: 'smooth' });
@@ -1105,7 +1173,7 @@ const scrollToValue = (type, value) => {
 
 const savePickerValue = () => {
   if (pickerExercise.value && pickerSetIndex.value !== null) {
-    const newWeight = parseFloat(`${selectedWeightInteger.value}.${selectedWeightDecimal.value}`);
+    const newWeight = parseFloat(`${selectedWeightInteger.value}.${selectedWeightDecimal.value}`) || 0;
     const newReps = selectedReps.value;
     
     const set = pickerExercise.value.performed[pickerSetIndex.value];
@@ -1231,6 +1299,7 @@ const toggleAllSets = (ex) => {
   scroll-snap-type: y mandatory;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch; /* Habilita momentum scrolling suave no iOS */
 }
 .wheel-scroll::-webkit-scrollbar {
   display: none;
@@ -1247,11 +1316,11 @@ const toggleAllSets = (ex) => {
   font-weight: 500;
   color: #C7C7CC;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: transform 0.15s ease, color 0.15s ease; /* Transiciona apenas transform e color para evitar reflows de layout */
   user-select: none;
 }
 .wheel-item.active {
-  font-size: 24px;
+  transform: scale(1.3); /* Usa transform em vez de font-size para evitar layout reflows durante o scroll */
   font-weight: 800;
   color: #1C1C1E;
 }

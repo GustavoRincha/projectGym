@@ -648,7 +648,7 @@ const handleBeforeUnload = (e) => {
   }
 };
 
-onBeforeRouteLeave((to, from) => {
+onBeforeRouteLeave((to) => {
   if (allowLeave.value || !isDirty.value) {
     return true;
   }

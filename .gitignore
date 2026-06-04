@@ -23,3 +23,8 @@ pnpm-debug.log*
 *.sln
 *.sw?
 .firebase
+dev-dist/
+scratch/
+scratch_check.js
+scratch_check.mjs
+

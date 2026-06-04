@@ -34,7 +34,7 @@ export default {
     }
   },
   actions: {
-    async initializeAuth({ commit, dispatch }) {
+    async initializeAuth({ commit }) {
       // Get the initial session
       const { data: { session } } = await supabase.auth.getSession();
       

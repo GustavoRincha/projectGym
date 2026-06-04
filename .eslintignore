@@ -1,0 +1,6 @@
+dev-dist/
+dist/
+scratch/
+scratch_check.js
+scratch_check.mjs
+node_modules/

@@ -175,6 +175,32 @@ export const syncService = {
         break;
       }
 
+      case 'UPDATE_DIET_TARGETS': {
+        const { user_id, ...targets } = payload;
+        const { error } = await supabase
+          .from('diet_goals')
+          .upsert({ user_id, ...targets, updated_at: new Date().toISOString() });
+        if (error) throw error;
+        break;
+      }
+
+      case 'LOG_FOOD_ITEM': {
+        const { error } = await supabase
+          .from('diet_logs')
+          .upsert([payload]);
+        if (error) throw error;
+        break;
+      }
+
+      case 'DELETE_FOOD_ITEM': {
+        const { error } = await supabase
+          .from('diet_logs')
+          .delete()
+          .eq('id', payload.id);
+        if (error) throw error;
+        break;
+      }
+
       case 'UPDATE_GAMIFICATION': {
         const { data } = await supabase.from('user_gamification').select('user_id').eq('user_id', payload.user_id).single();
         if (!data) {

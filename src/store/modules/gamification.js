@@ -106,7 +106,7 @@ export default {
       syncService.processQueue();
     },
 
-    checkAndUnlockBadges({ commit, state, rootState, dispatch }, { sessionData, streak }) {
+    checkAndUnlockBadges({ state, rootState, dispatch }, { sessionData, streak }) {
       const sessions = rootState.history?.sessions || [];
       const hour = new Date(sessionData.date).getHours();
 

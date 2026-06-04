@@ -77,6 +77,17 @@ export default {
       }
       state.goals.diet.targets = { ...state.goals.diet.targets, ...targets };
     },
+    SET_DIET_DATA(state, { targets, logs }) {
+      if (!state.goals.diet) {
+        state.goals.diet = { targets: { calories: 2000, protein: 150, carbs: 200, fat: 67 }, logs: {} };
+      }
+      if (targets) {
+        state.goals.diet.targets = { ...state.goals.diet.targets, ...targets };
+      }
+      if (logs) {
+        state.goals.diet.logs = logs;
+      }
+    },
     LOG_FOOD(state, { date, meal, food }) {
       if (!state.goals.diet) {
         state.goals.diet = { targets: {}, logs: {} };
@@ -144,6 +155,58 @@ export default {
       if (goalsData && goalsData.body_goals) {
         commit('SET_GOALS', { ...goalsData.body_goals, skipSync: true });
       }
+
+      // 5. Fetch Diet Goals (from diet_goals)
+      try {
+        const { data: dietGoals } = await supabase
+          .from('diet_goals')
+          .select('*')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        const targets = dietGoals ? {
+          calories: parseInt(dietGoals.calories) || 2000,
+          protein: parseFloat(dietGoals.protein) || 150,
+          carbs: parseFloat(dietGoals.carbs) || 200,
+          fat: parseFloat(dietGoals.fat) || 67
+        } : null;
+
+        // 6. Fetch Diet Logs (from diet_logs)
+        const { data: dietLogs } = await supabase
+          .from('diet_logs')
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: true });
+
+        const logs = {};
+        if (dietLogs) {
+          dietLogs.forEach(item => {
+            const dateStr = item.date;
+            if (!logs[dateStr]) {
+              logs[dateStr] = {
+                meals: { breakfast: [], lunch: [], dinner: [], snack: [] }
+              };
+            }
+            if (!logs[dateStr].meals[item.meal]) {
+              logs[dateStr].meals[item.meal] = [];
+            }
+            logs[dateStr].meals[item.meal].push({
+              id: item.id,
+              name: item.name,
+              calories: parseFloat(item.calories) || 0,
+              protein: parseFloat(item.protein) || 0,
+              carbs: parseFloat(item.carbs) || 0,
+              fat: parseFloat(item.fat) || 0,
+              portionText: item.portion_text,
+              quantity: parseFloat(item.quantity) || 1
+            });
+          });
+        }
+
+        commit('SET_DIET_DATA', { targets, logs });
+      } catch (error) {
+        console.error('Error fetching diet data:', error);
+      }
     },
 
     logWeight({ commit, rootState }, { date, value }) {
@@ -170,37 +233,48 @@ export default {
     },
     setGoals({ commit, rootState, state }, goals) {
       commit('SET_GOALS', goals);
+      // Omit diet goals/logs when saving other targets to avoid overwriting or saving heavy payloads
+      const nonDietGoals = { ...state.goals };
+      delete nonDietGoals.diet;
       syncService.addToQueue('UPDATE_GOALS', { 
         user_id: rootState.auth?.user?.id, 
-        body_goals: state.goals 
+        body_goals: nonDietGoals 
       });
       syncService.processQueue();
     },
     saveDietTargets({ commit, rootState, state }, targets) {
       commit('SET_DIET_TARGETS', targets);
-      syncService.addToQueue('UPDATE_GOALS', { 
+      syncService.addToQueue('UPDATE_DIET_TARGETS', { 
         user_id: rootState.auth?.user?.id, 
-        body_goals: state.goals 
+        ...state.goals.diet.targets
       });
       syncService.processQueue();
     },
-    logFood({ commit, rootState, state }, { date, meal, food }) {
+    logFood({ commit, rootState }, { date, meal, food }) {
       const foodWithId = {
         ...food,
         id: food.id || crypto.randomUUID()
       };
       commit('LOG_FOOD', { date, meal, food: foodWithId });
-      syncService.addToQueue('UPDATE_GOALS', { 
-        user_id: rootState.auth?.user?.id, 
-        body_goals: state.goals 
+      syncService.addToQueue('LOG_FOOD_ITEM', {
+        id: foodWithId.id,
+        user_id: rootState.auth?.user?.id,
+        date,
+        meal,
+        name: foodWithId.name,
+        calories: foodWithId.calories,
+        protein: foodWithId.protein,
+        carbs: foodWithId.carbs,
+        fat: foodWithId.fat,
+        portion_text: foodWithId.portionText,
+        quantity: foodWithId.quantity || 1
       });
       syncService.processQueue();
     },
-    deleteFood({ commit, rootState, state }, { date, meal, foodId }) {
+    deleteFood({ commit }, { date, meal, foodId }) {
       commit('DELETE_FOOD', { date, meal, foodId });
-      syncService.addToQueue('UPDATE_GOALS', { 
-        user_id: rootState.auth?.user?.id, 
-        body_goals: state.goals 
+      syncService.addToQueue('DELETE_FOOD_ITEM', { 
+        id: foodId 
       });
       syncService.processQueue();
     },

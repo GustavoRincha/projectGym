@@ -230,7 +230,7 @@
       </h3>
       
       <!-- Lembrete de Treino Switch -->
-      <div class="d-flex align-center justify-space-between">
+      <div class="d-flex align-center justify-space-between" :class="{ 'mb-4': notificationsEnabled }">
         <div style="flex: 1; min-width: 0; padding-right: 12px;">
           <span class="text-subtitle-1 font-weight-bold text-high-emphasis d-block leading-tight mb-1">Lembrete de Treino</span>
           <span class="text-caption text-medium-emphasis d-block leading-normal">Notificações se ficar mais de 24h sem treinar</span>
@@ -243,6 +243,22 @@
           @update:model-value="toggleNotifications"
         ></v-switch>
       </div>
+
+      <v-divider class="mb-4" v-if="notificationsEnabled"></v-divider>
+
+      <!-- Botão de Teste de Notificação -->
+      <v-btn
+        v-if="notificationsEnabled"
+        color="primary"
+        variant="tonal"
+        size="small"
+        rounded="pill"
+        prepend-icon="mdi-send-outline"
+        @click="testNotification"
+        class="font-weight-bold"
+      >
+        Testar Notificação
+      </v-btn>
     </v-card>
 
     <!-- Personalização de Aparência -->
@@ -670,6 +686,11 @@ const toggleNotifications = async (val) => {
     localStorage.setItem('gym_notifications_enabled', 'false');
     showMessage('Lembretes de treino desativados.', 'info');
   }
+};
+
+const testNotification = () => {
+  notificationService.sendTestNotification();
+  showMessage('Notificação de teste disparada!', 'success');
 };
 
 const uploadLoading = ref(false);
