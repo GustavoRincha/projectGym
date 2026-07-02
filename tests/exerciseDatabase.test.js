@@ -1,3 +1,4 @@
+/* global globalThis */
 import { describe, it, expect, vi, beforeAll } from 'vitest';
 import axios from 'axios';
 

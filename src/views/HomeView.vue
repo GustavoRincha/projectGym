@@ -277,22 +277,7 @@ const weekDays = computed(() => {
   return list;
 });
 
-// Contagem de treinos na semana atual
-const weeklyFrequencyCount = computed(() => {
-  return weekDays.value.filter(d => d.hasTrained).length;
-});
 
-// Contagem de treinos no mês atual
-const monthlyFrequencyCount = computed(() => {
-  const today = new Date();
-  const currentYear = today.getFullYear();
-  const currentMonth = today.getMonth();
-  
-  return history.value.filter(session => {
-    const d = new Date(session.date);
-    return d.getFullYear() === currentYear && d.getMonth() === currentMonth;
-  }).length;
-});
 
 const getScheduledDaysOfWeek = computed(() => {
   const scheduled = new Set();

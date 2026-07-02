@@ -12,10 +12,10 @@
             <template v-slot:prepend><v-icon>mdi-pencil-plus</v-icon></template>
             <v-list-item-title>Criar do Zero</v-list-item-title>
           </v-list-item>
-          <v-list-item @click="suggestRoutine">
+          <!-- <v-list-item @click="suggestRoutine">
             <template v-slot:prepend><v-icon color="secondary">mdi-magic-staff</v-icon></template>
             <v-list-item-title>Assistente / Catálogo</v-list-item-title>
-          </v-list-item>
+          </v-list-item> -->
           <v-list-item @click="openImportDialog">
             <template v-slot:prepend><v-icon color="primary">mdi-download</v-icon></template>
             <v-list-item-title>Importar por Código</v-list-item-title>

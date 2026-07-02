@@ -18,37 +18,51 @@
             Responda e deixe a IA ajudar
           </v-card-title>
           <v-card-text class="px-0">
-            <p class="mb-4 text-medium-emphasis">Descobriremos o melhor programa de treino para você em 3 perguntas.</p>
-            
-            <v-select
-              v-model="wizard.level"
-              :items="['Iniciante', 'Intermediário', 'Avançado']"
-              label="Qual seu nível de experiência?"
-              variant="outlined"
-              color="primary"
-              class="mb-2"
-            ></v-select>
+            <div v-if="loading" class="d-flex flex-column align-center justify-center py-8">
+              <v-progress-circular indeterminate color="primary" size="64" width="6" class="mb-4"></v-progress-circular>
+              <div class="text-h6 font-weight-bold">Buscando exercícios...</div>
+              <div class="text-caption text-medium-emphasis text-center mt-2 px-6">
+                Consultando nossa base de mais de 1.300 movimentos e elaborando o melhor plano para você.
+              </div>
+            </div>
 
-            <v-select
-              v-model="wizard.objective"
-              :items="['Hipertrofia', 'Força', 'Resistência', 'Emagrecimento']"
-              label="Qual o seu foco principal?"
-              variant="outlined"
-              color="primary"
-              class="mb-2"
-            ></v-select>
+            <div v-else>
+              <p class="mb-4 text-medium-emphasis">Descobriremos o melhor programa de treino para você em 3 perguntas.</p>
+              
+              <v-alert v-if="errorMsg" type="error" density="compact" variant="tonal" class="mb-4">
+                {{ errorMsg }}
+              </v-alert>
 
-            <v-select
-              v-model="wizard.days"
-              :items="[3, 4, 5, 6]"
-              label="Quantos dias por semana você vai treinar?"
-              variant="outlined"
-              color="primary"
-              class="mb-2"
-            ></v-select>
+              <v-select
+                v-model="wizard.level"
+                :items="['Iniciante', 'Intermediário', 'Avançado']"
+                label="Qual seu nível de experiência?"
+                variant="outlined"
+                color="primary"
+                class="mb-2"
+              ></v-select>
+
+              <v-select
+                v-model="wizard.objective"
+                :items="['Hipertrofia', 'Força', 'Resistência', 'Emagrecimento']"
+                label="Qual o seu foco principal?"
+                variant="outlined"
+                color="primary"
+                class="mb-2"
+              ></v-select>
+
+              <v-select
+                v-model="wizard.days"
+                :items="[3, 4, 5, 6]"
+                label="Quantos dias por semana você vai treinar?"
+                variant="outlined"
+                color="primary"
+                class="mb-2"
+              ></v-select>
+            </div>
           </v-card-text>
           
-          <v-card-actions class="px-0">
+          <v-card-actions class="px-0" v-if="!loading">
             <v-btn color="primary" block variant="flat" size="large" @click="generateSuggestion">
               Gerar Sugestão de Treino
             </v-btn>
@@ -169,6 +183,7 @@ import { useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 import { workoutTemplates } from '@/data/workoutTemplates';
 import ExerciseGuideDialog from '@/components/ExerciseGuideDialog.vue';
+import { generateDynamicWorkout } from '@/services/workoutGeneratorService';
 
 const router = useRouter();
 const store = useStore();
@@ -183,6 +198,8 @@ const openGuide = (name) => {
 };
 const templates = ref(workoutTemplates);
 const snackbar = ref(false);
+const loading = ref(false);
+const errorMsg = ref('');
 
 const wizard = reactive({
   level: 'Iniciante',
@@ -196,28 +213,22 @@ const goBack = () => {
   router.push('/workouts');
 };
 
-const generateSuggestion = () => {
-  // Simples algoritmo de sugestão baseado em pontuação
-  let bestMatch = null;
-  let highestScore = -1;
-
-  for (const tpl of templates.value) {
-    let score = 0;
-    if (tpl.level === wizard.level) score += 3;
-    if (tpl.objective === wizard.objective) score += 2;
-    if (tpl.days === wizard.days) score += 2;
-    
-    // Fallbacks
-    if (wizard.level === 'Iniciante' && tpl.split === 'Corpo Todo') score += 2;
-    if (wizard.level === 'Avançado' && tpl.split === 'PPL') score += 2;
-
-    if (score > highestScore) {
-      highestScore = score;
-      bestMatch = tpl;
-    }
+const generateSuggestion = async () => {
+  loading.value = true;
+  errorMsg.value = '';
+  try {
+    const generated = await generateDynamicWorkout({
+      level: wizard.level,
+      objective: wizard.objective,
+      days: wizard.days
+    });
+    suggestedTemplate.value = generated;
+  } catch (err) {
+    console.error(err);
+    errorMsg.value = 'Ocorreu um erro ao gerar a sugestão. Tente novamente.';
+  } finally {
+    loading.value = false;
   }
-
-  suggestedTemplate.value = bestMatch;
 };
 
 const useTemplate = async (template) => {

@@ -222,90 +222,7 @@
       </v-col>
     </v-row>
 
-    <!-- Configurações de Notificação -->
-    <v-card color="surface" elevation="2" rounded="xl" class="pa-6 mb-6 glass-card">
-      <h3 class="text-h6 font-weight-bold mb-4 d-flex align-center">
-        <v-icon icon="mdi-bell-outline" class="mr-2 text-primary"></v-icon>
-        Notificações
-      </h3>
-      
-      <!-- Lembrete de Treino Switch -->
-      <div class="d-flex align-center justify-space-between" :class="{ 'mb-4': notificationsEnabled }">
-        <div style="flex: 1; min-width: 0; padding-right: 12px;">
-          <span class="text-subtitle-1 font-weight-bold text-high-emphasis d-block leading-tight mb-1">Lembrete de Treino</span>
-          <span class="text-caption text-medium-emphasis d-block leading-normal">Notificações se ficar mais de 24h sem treinar</span>
-        </div>
-        <v-switch
-          v-model="notificationsEnabled"
-          color="primary"
-          hide-details
-          inset
-          @update:model-value="toggleNotifications"
-        ></v-switch>
-      </div>
 
-      <v-divider class="mb-4" v-if="notificationsEnabled"></v-divider>
-
-      <!-- Botão de Teste de Notificação -->
-      <v-btn
-        v-if="notificationsEnabled"
-        color="primary"
-        variant="tonal"
-        size="small"
-        rounded="pill"
-        prepend-icon="mdi-send-outline"
-        @click="testNotification"
-        class="font-weight-bold"
-      >
-        Testar Notificação
-      </v-btn>
-    </v-card>
-
-    <!-- Personalização de Aparência -->
-    <v-card color="surface" elevation="2" rounded="xl" class="pa-6 mb-6 glass-card">
-      <h3 class="text-h6 font-weight-bold mb-4 d-flex align-center">
-        <v-icon icon="mdi-palette-outline" class="mr-2 text-primary"></v-icon>
-        Aparência e Cores
-      </h3>
-      
-      <!-- Tema Escuro Switch -->
-      <div class="d-flex align-center justify-space-between mb-4">
-        <div style="flex: 1; min-width: 0; padding-right: 12px;">
-          <span class="text-subtitle-1 font-weight-bold text-high-emphasis d-block leading-tight mb-1">Tema Escuro</span>
-          <span class="text-caption text-medium-emphasis d-block leading-normal">Alternar entre modo escuro e claro</span>
-        </div>
-        <v-switch
-          v-model="darkThemeEnabled"
-          color="primary"
-          hide-details
-          inset
-          @update:model-value="toggleDarkTheme"
-        ></v-switch>
-      </div>
-
-      <v-divider class="mb-4"></v-divider>
-
-      <!-- Cor de Destaque -->
-      <div>
-        <span class="text-subtitle-1 font-weight-bold text-high-emphasis d-block leading-tight mb-2">Cor de Destaque</span>
-        <div class="d-flex align-center justify-start flex-wrap" style="gap: 12px;">
-          <v-btn
-            v-for="color in themeColors"
-            :key="color.value"
-            icon
-            :color="color.hex"
-            size="small"
-            class="theme-color-dot"
-            :class="{ 'active': currentThemeColor === color.value }"
-            @click="changeThemeColor(color.value, color.hex)"
-            :title="color.name"
-            elevation="1"
-          >
-            <v-icon v-if="currentThemeColor === color.value" icon="mdi-check" color="background" size="small"></v-icon>
-          </v-btn>
-        </div>
-      </div>
-    </v-card>
 
     <!-- Grid de Constância (Últimos 28 Dias) -->
     <v-card color="surface" elevation="2" rounded="xl" class="pa-6 mb-6 glass-card">
@@ -355,28 +272,7 @@
       <v-icon icon="mdi-chevron-right" color="medium-emphasis"></v-icon>
     </v-card>
 
-    <!-- Conquistas e Medalhas -->
-    <v-card color="surface" elevation="2" rounded="xl" class="pa-6 mb-6 glass-card">
-      <h3 class="text-h6 font-weight-bold mb-4 d-flex align-center">
-        <v-icon icon="mdi-medal-outline" class="mr-2 text-primary"></v-icon>
-        Medalhas e Conquistas
-      </h3>
 
-      <div v-if="badges.length > 0" class="badges-grid">
-        <div 
-          v-for="badge in badges" 
-          :key="badge.id" 
-          class="badge-item"
-          :class="{ 'locked': !badge.unlocked }"
-          v-ripple
-          @click="showBadgeDetails(badge)"
-        >
-          <div class="badge-icon mb-2">{{ badge.icon }}</div>
-          <div class="badge-name text-caption font-weight-bold text-truncate">{{ badge.name }}</div>
-          <div class="badge-rarity" :class="badge.rarity">{{ getRarityLabel(badge.rarity) }}</div>
-        </div>
-      </div>
-    </v-card>
 
     <!-- Botão de Sair -->
     <v-btn
@@ -392,44 +288,7 @@
       Sair da Conta
     </v-btn>
 
-    <!-- Dialog de Detalhes da Medalha -->
-    <v-dialog v-model="badgeDialog" max-width="320">
-      <v-card v-if="selectedBadge" color="surface" class="pa-4 text-center rounded-xl glass-card">
-        <div class="text-h2 my-4">{{ selectedBadge.icon }}</div>
-        <v-card-title class="text-h6 font-weight-bold pt-0 px-2">{{ selectedBadge.name }}</v-card-title>
-        <div class="badge-rarity d-inline-block px-3 py-1 rounded-pill mb-4 text-caption" :class="selectedBadge.rarity" style="margin: 0 auto;">
-          {{ getRarityLabel(selectedBadge.rarity) }}
-        </div>
-        <v-card-text class="text-body-2 text-medium-emphasis px-2 pt-0 mb-4">
-          {{ selectedBadge.description }}
-        </v-card-text>
-        
-        <v-alert
-          v-if="selectedBadge.unlocked"
-          type="success"
-          variant="tonal"
-          density="compact"
-          class="text-caption mb-4"
-          rounded="lg"
-        >
-          Desbloqueada em {{ formatDate(selectedBadge.unlockedAt) }}
-        </v-alert>
-        <v-alert
-          v-else
-          type="warning"
-          variant="tonal"
-          density="compact"
-          class="text-caption mb-4"
-          rounded="lg"
-        >
-          Medalha bloqueada
-        </v-alert>
 
-        <v-card-actions class="pa-0">
-          <v-btn block color="primary" variant="flat" rounded="pill" @click="badgeDialog = false">Fechar</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
 
     <!-- Dialog de Edição de Perfil Estendido -->
     <v-dialog v-model="editProfileDialog" max-width="400">
@@ -583,15 +442,10 @@
 import { ref, computed, reactive, onMounted } from 'vue';
 import { useStore } from 'vuex';
 import { useRouter } from 'vue-router';
-import { useTheme } from 'vuetify';
-import { notificationService } from '@/services/notificationService';
 import { supabase } from '@/plugins/supabase';
 
 const store = useStore();
 const router = useRouter();
-
-const badgeDialog = ref(false);
-const selectedBadge = ref(null);
 
 // Edit Profile States
 const editProfileDialog = ref(false);
@@ -610,9 +464,6 @@ const snackbar = ref({
   color: 'success'
 });
 
-const theme = useTheme();
-const notificationsEnabled = ref(false);
-const darkThemeEnabled = ref(true);
 const currentThemeColor = ref('green');
 
 const themeColors = [
@@ -623,75 +474,8 @@ const themeColors = [
 ];
 
 onMounted(() => {
-  notificationsEnabled.value = notificationService.isEnabled();
-  darkThemeEnabled.value = theme.global.name.value === 'gymDark';
   currentThemeColor.value = localStorage.getItem('gym_theme_color_key') || 'green';
 });
-
-const toggleDarkTheme = (val) => {
-  const newTheme = val ? 'gymDark' : 'gymLight';
-  theme.global.name.value = newTheme;
-  localStorage.setItem('gym_theme_name', newTheme);
-  darkThemeEnabled.value = val;
-  showMessage(`Tema ${val ? 'Escuro' : 'Claro'} ativado!`, 'success');
-};
-
-const changeThemeColor = (key, hex) => {
-  currentThemeColor.value = key;
-  localStorage.setItem('gym_theme_color_key', key);
-  localStorage.setItem('gym_theme_primary_color', hex);
-  
-  theme.themes.value.gymDark.colors.primary = hex;
-  theme.themes.value.gymLight.colors.primary = hex;
-  
-  const colorNames = { green: 'Verde', blue: 'Azul', purple: 'Roxo', orange: 'Laranja' };
-  showMessage(`Cor tema alterada para ${colorNames[key]}!`, 'success');
-};
-
-const toggleNotifications = async (val) => {
-  if (val) {
-    if (!('Notification' in window)) {
-      showMessage('Notificações não são suportadas neste navegador.', 'error');
-      notificationsEnabled.value = false;
-      localStorage.setItem('gym_notifications_enabled', 'false');
-      return;
-    }
-    
-    if (Notification.permission === 'default') {
-      const permission = await Notification.requestPermission();
-      if (permission === 'granted') {
-        notificationsEnabled.value = true;
-        localStorage.setItem('gym_notifications_enabled', 'true');
-        showMessage('Notificações ativadas com sucesso!', 'success');
-        notificationService.sendNotification(
-          'Gym Track 🦾',
-          'Tudo pronto! Você receberá lembretes por aqui quando passar de 24h sem treinar.'
-        );
-      } else {
-        notificationsEnabled.value = false;
-        localStorage.setItem('gym_notifications_enabled', 'false');
-        showMessage('Permissão de notificação negada.', 'warning');
-      }
-    } else if (Notification.permission === 'denied') {
-      notificationsEnabled.value = false;
-      localStorage.setItem('gym_notifications_enabled', 'false');
-      showMessage('As notificações estão bloqueadas no seu navegador. Ative nas configurações do site.', 'warning');
-    } else {
-      notificationsEnabled.value = true;
-      localStorage.setItem('gym_notifications_enabled', 'true');
-      showMessage('Notificações ativadas!', 'success');
-    }
-  } else {
-    notificationsEnabled.value = false;
-    localStorage.setItem('gym_notifications_enabled', 'false');
-    showMessage('Lembretes de treino desativados.', 'info');
-  }
-};
-
-const testNotification = () => {
-  notificationService.sendTestNotification();
-  showMessage('Notificação de teste disparada!', 'success');
-};
 
 const uploadLoading = ref(false);
 const fileInput = ref(null);
@@ -847,7 +631,7 @@ const xp = computed(() => store.getters['gamification/xp']);
 const level = computed(() => store.getters['gamification/level']);
 const levelProgress = computed(() => store.getters['gamification/levelProgress']);
 const xpToNextLevel = computed(() => store.getters['gamification/xpToNextLevel']);
-const badges = computed(() => store.getters['gamification/allBadges']);
+
 const sessions = computed(() => store.getters['history/allSessions'] || []);
 
 // Medidas Corporais
@@ -1042,29 +826,7 @@ const currentStreak = computed(() => {
   return streak;
 });
 
-const getRarityLabel = (rarity) => {
-  const labels = {
-    common: 'Comum',
-    rare: 'Rara',
-    epic: 'Épica',
-    legendary: 'Lendária'
-  };
-  return labels[rarity] || 'Comum';
-};
 
-const showBadgeDetails = (badge) => {
-  selectedBadge.value = badge;
-  badgeDialog.value = true;
-};
-
-const formatDate = (isoString) => {
-  if (!isoString) return '';
-  return new Date(isoString).toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric'
-  });
-};
 
 const logout = async () => {
   await store.dispatch('auth/logout');
