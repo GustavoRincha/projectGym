@@ -274,14 +274,16 @@
                 <div class="share-divider"></div>
                 
                 <!-- Exercises List -->
-                <div class="share-exercises-title">Exercícios Concluídos</div>
-                <div class="share-exercises-list">
-                  <div v-for="ex in getSessionExercises(sharingSession).slice(0, 6)" :key="ex.id" class="share-exercise-item">
-                    <v-icon icon="mdi-check-circle-outline" class="share-check-icon mr-3"></v-icon>
-                    <span class="share-exercise-name">{{ ex.name }}</span>
-                  </div>
-                  <div v-if="sharingSession && getSessionExercises(sharingSession).length > 6" class="share-exercise-more">
-                    + {{ getSessionExercises(sharingSession).length - 6 }} outros exercícios completados
+                <div v-if="activeTemplate !== 'theme-minimal-metrics'">
+                  <div class="share-exercises-title">Exercícios Concluídos</div>
+                  <div class="share-exercises-list">
+                    <div v-for="ex in getSessionExercises(sharingSession).slice(0, 6)" :key="ex.id" class="share-exercise-item">
+                      <v-icon icon="mdi-check-circle-outline" class="share-check-icon mr-3"></v-icon>
+                      <span class="share-exercise-name">{{ ex.name }}</span>
+                    </div>
+                    <div v-if="sharingSession && getSessionExercises(sharingSession).length > 6" class="share-exercise-more">
+                      + {{ getSessionExercises(sharingSession).length - 6 }} outros exercícios completados
+                    </div>
                   </div>
                 </div>
               </div>
@@ -305,7 +307,7 @@
             @click="executeShare"
             class="font-weight-bold"
           >
-            Compartilhar no Story
+            orCompartilhar
           </v-btn>
           <v-btn
             variant="text"
@@ -349,22 +351,24 @@
           <div class="share-divider"></div>
           
           <!-- Exercises List (Membros Ativos / Principais) -->
-          <div class="share-exercises-title">Exercícios Concluídos</div>
-          <div class="share-exercises-list">
-            <div v-for="ex in getSessionExercises(sharingSession).slice(0, 6)" :key="ex.id" class="share-exercise-item">
-              <v-icon icon="mdi-check-circle-outline" class="share-check-icon mr-3"></v-icon>
-              <span class="share-exercise-name">{{ ex.name }}</span>
-            </div>
-            <div v-if="sharingSession && getSessionExercises(sharingSession).length > 6" class="share-exercise-more">
-              + {{ getSessionExercises(sharingSession).length - 6 }} outros exercícios completados
+          <div v-if="activeTemplate !== 'theme-minimal-metrics'">
+            <div class="share-exercises-title">Exercícios Concluídos</div>
+            <div class="share-exercises-list">
+              <div v-for="ex in getSessionExercises(sharingSession).slice(0, 6)" :key="ex.id" class="share-exercise-item">
+                <v-icon icon="mdi-check-circle-outline" class="share-check-icon mr-3"></v-icon>
+                <span class="share-exercise-name">{{ ex.name }}</span>
+              </div>
+              <div v-if="sharingSession && getSessionExercises(sharingSession).length > 6" class="share-exercise-more">
+                + {{ getSessionExercises(sharingSession).length - 6 }} outros exercícios completados
+              </div>
             </div>
           </div>
         </div>
         
         <!-- Motivational Footer -->
         <div class="share-card-footer">
-          <p class="share-quote">"Consistência supera intensidade."</p>
-          <span class="share-app-url">gymtrack.vercel.app</span>
+          <!-- <p class="share-quote">"Consistência supera intensidade."</p>
+          <span class="share-app-url">gymtrack.vercel.app</span> -->
         </div>
       </div>
     </div>
@@ -389,7 +393,8 @@ const templates = [
   { id: 'theme-dark-grid', name: 'Classic Dark' },
   { id: 'theme-transparent', name: 'Adesivo Transparente' },
   { id: 'theme-light-clean', name: 'Clean Light' },
-  { id: 'theme-neon-power', name: 'Neon Purple' }
+  { id: 'theme-neon-power', name: 'Neon Purple' },
+  { id: 'theme-minimal-metrics', name: 'Métricas Minimal' }
 ];
 const currentTemplateIndex = ref(0);
 const activeTemplate = computed(() => templates[currentTemplateIndex.value].id);
@@ -439,7 +444,7 @@ const executeShare = async () => {
   }
 
   try {
-    const isTransparent = activeTemplate.value === 'theme-transparent';
+    const isTransparent = activeTemplate.value === 'theme-transparent' || activeTemplate.value === 'theme-minimal-metrics';
     const canvas = await html2canvas(shareCardRef.value, {
       useCORS: true,
       allowTaint: true,
@@ -863,7 +868,6 @@ const getCardioIcon = (name) => {
   left: 20px;
   right: 20px;
   bottom: 20px;
-  border: 2px dashed rgba(255, 255, 255, 0.25);
   border-radius: 40px;
   pointer-events: none;
   z-index: 1;
@@ -936,5 +940,48 @@ const getCardioIcon = (name) => {
 }
 .theme-neon-power .share-exercise-more {
   color: #ff2d55;
+}
+
+/* MINIMAL METRICS */
+.theme-minimal-metrics {
+  background: transparent !important;
+  color: #ffffff !important;
+}
+.theme-minimal-metrics::before {
+  content: '';
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  right: 20px;
+  bottom: 20px;
+  border-radius: 40px;
+  pointer-events: none;
+  z-index: 1;
+}
+.theme-minimal-metrics .share-stats-grid {
+  grid-template-columns: 1fr;
+  gap: 35px;
+  margin-top: 50px;
+  margin-bottom: 50px;
+  width: 100%;
+}
+.theme-minimal-metrics .share-stat-box {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  border-radius: 24px;
+  padding: 40px 30px;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+.theme-minimal-metrics .share-stat-val {
+  font-size: 72px;
+  color: #00E676;
+  font-weight: 900;
+}
+.theme-minimal-metrics .share-stat-lbl {
+  font-size: 20px;
+  margin-top: 12px;
+  color: #8E8E93;
 }
 </style>
