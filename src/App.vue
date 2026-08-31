@@ -79,7 +79,6 @@ import { useStore } from 'vuex';
 import { useRouter, useRoute } from 'vue-router';
 import { useTheme } from 'vuetify';
 import { syncService } from '@/services/syncService';
-import { notificationService } from '@/services/notificationService';
 
 const store = useStore();
 const router = useRouter();
@@ -194,13 +193,6 @@ const returnToSession = () => {
   }
 };
 
-// Monitorar histórico de treinos para enviar notificações de lembrete
-const sessions = computed(() => store.getters['history/allSessions'] || []);
-watch(sessions, (newSessions) => {
-  if (newSessions && newSessions.length > 0) {
-    notificationService.checkAndTriggerReminder(newSessions);
-  }
-});
 
 /*
 const logout = async () => {
