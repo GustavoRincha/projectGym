@@ -283,10 +283,22 @@
       rounded="pill"
       prepend-icon="mdi-logout"
       @click="logout"
-      class="font-weight-bold"
+      class="font-weight-bold mb-6"
     >
       Sair da Conta
     </v-btn>
+
+    <!-- Informações da Versão do App -->
+    <div class="text-center pb-4 pt-1">
+      <div class="d-inline-flex align-center justify-center px-4 py-1 rounded-pill app-version-badge mb-1">
+        <v-icon icon="mdi-dumbbell" size="x-small" color="primary" class="mr-1.5"></v-icon>
+        <span class="text-caption font-weight-bold text-high-emphasis">Gym Track</span>
+        <span class="text-caption text-medium-emphasis ml-1.5 font-weight-medium">v{{ appVersion }}</span>
+      </div>
+      <div class="text-caption text-medium-emphasis" style="font-size: 0.72rem !important;">
+        Versão instalada do aplicativo
+      </div>
+    </div>
 
 
 
@@ -446,6 +458,8 @@ import { supabase } from '@/plugins/supabase';
 
 const store = useStore();
 const router = useRouter();
+
+const appVersion = import.meta.env.VITE_APP_VERSION || '1.0.0';
 
 // Edit Profile States
 const editProfileDialog = ref(false);
@@ -1190,5 +1204,16 @@ const logout = async () => {
   border-color: #ffffff !important;
   transform: scale(1.15);
   box-shadow: 0 0 8px rgba(255, 255, 255, 0.35);
+}
+
+.app-version-badge {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px);
+}
+
+.v-theme--gymLight .app-version-badge {
+  background: rgba(0, 0, 0, 0.04) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
 }
 </style>

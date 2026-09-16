@@ -3,6 +3,9 @@ import vue from '@vitejs/plugin-vue'
 import vuetify from 'vite-plugin-vuetify'
 import path from 'path'
 import { VitePWA } from 'vite-plugin-pwa'
+import packageJson from './package.json'
+
+process.env.VITE_APP_VERSION = packageJson.version
 
 export default defineConfig({
   plugins: [
