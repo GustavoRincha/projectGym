@@ -164,14 +164,10 @@ export const syncService = {
       }
 
       case 'UPDATE_GOALS': {
-        const { data } = await supabase.from('user_goals').select('user_id').eq('user_id', payload.user_id).single();
-        if (!data) {
-          const { error } = await supabase.from('user_goals').insert([payload]);
-          if (error) throw error;
-        } else {
-          const { error } = await supabase.from('user_goals').update(payload).eq('user_id', payload.user_id);
-          if (error) throw error;
-        }
+        const { error } = await supabase
+          .from('user_goals')
+          .upsert(payload, { onConflict: 'user_id' });
+        if (error) throw error;
         break;
       }
 
@@ -202,14 +198,10 @@ export const syncService = {
       }
 
       case 'UPDATE_GAMIFICATION': {
-        const { data } = await supabase.from('user_gamification').select('user_id').eq('user_id', payload.user_id).single();
-        if (!data) {
-          const { error } = await supabase.from('user_gamification').insert([payload]);
-          if (error) throw error;
-        } else {
-          const { error } = await supabase.from('user_gamification').update(payload).eq('user_id', payload.user_id);
-          if (error) throw error;
-        }
+        const { error } = await supabase
+          .from('user_gamification')
+          .upsert(payload, { onConflict: 'user_id' });
+        if (error) throw error;
         break;
       }
 

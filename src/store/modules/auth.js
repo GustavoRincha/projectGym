@@ -143,7 +143,18 @@ export default {
       try {
         const { error } = await supabase.auth.signOut();
         if (error) throw error;
+        
+        // Limpar dados locais para garantir isolamento e privacidade entre contas
+        localStorage.removeItem('gymtrack_state');
         commit('CLEAR_AUTH');
+        commit('workouts/SET_ROUTINES', [], { root: true });
+        commit('history/CLEAR_HISTORY', null, { root: true });
+        commit('body/SET_WEIGHT_LOG', [], { root: true });
+        commit('body/SET_BF_LOG', [], { root: true });
+        commit('body/SET_MEASUREMENTS', [], { root: true });
+        commit('goals/SET_ALL_GOALS', [], { root: true });
+        commit('gamification/SET_GAMIFICATION', { xp: 0, unlocked_badges: [] }, { root: true });
+        commit('session/CLEAR_SESSION', null, { root: true });
       } catch (error) {
         commit('SET_ERROR', error.message);
         throw error;

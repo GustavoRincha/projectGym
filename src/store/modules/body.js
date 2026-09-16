@@ -130,53 +130,53 @@ export default {
       const userId = rootState.auth?.user?.id;
       if (!userId) return;
 
-      // 1. Fetch Weight Logs
-      const { data: weightData } = await supabase.from('weight_logs').select('*').eq('user_id', userId).order('date', { ascending: true });
-      if (weightData) {
-        const formatted = weightData.map(d => ({ date: d.date, value: parseFloat(d.value) }));
-        commit('SET_WEIGHT_LOG', formatted);
-      }
-
-      // 2. Fetch BF Logs
-      const { data: bfData } = await supabase.from('bf_logs').select('*').eq('user_id', userId).order('date', { ascending: true });
-      if (bfData) {
-        const formatted = bfData.map(d => ({ date: d.date, value: parseFloat(d.value) }));
-        commit('SET_BF_LOG', formatted);
-      }
-
-      // 3. Fetch Measurements
-      const { data: measData } = await supabase.from('measurements').select('*').eq('user_id', userId).order('date', { ascending: true });
-      if (measData) {
-        commit('SET_MEASUREMENTS', measData);
-      }
-
-      // 4. Fetch Goals (from user_goals)
-      const { data: goalsData } = await supabase.from('user_goals').select('body_goals').eq('user_id', userId).single();
-      if (goalsData && goalsData.body_goals) {
-        commit('SET_GOALS', { ...goalsData.body_goals, skipSync: true });
-      }
-
-      // 5. Fetch Diet Goals (from diet_goals)
       try {
-        const { data: dietGoals } = await supabase
-          .from('diet_goals')
-          .select('*')
-          .eq('user_id', userId)
-          .maybeSingle();
+        // Paralelizar todas as consultas ao Supabase para otimizar tempo de carregamento
+        const [
+          { data: weightData },
+          { data: bfData },
+          { data: measData },
+          { data: goalsData },
+          { data: dietGoals },
+          { data: dietLogs }
+        ] = await Promise.all([
+          supabase.from('weight_logs').select('*').eq('user_id', userId).order('date', { ascending: true }),
+          supabase.from('bf_logs').select('*').eq('user_id', userId).order('date', { ascending: true }),
+          supabase.from('measurements').select('*').eq('user_id', userId).order('date', { ascending: true }),
+          supabase.from('user_goals').select('body_goals').eq('user_id', userId).maybeSingle(),
+          supabase.from('diet_goals').select('*').eq('user_id', userId).maybeSingle(),
+          supabase.from('diet_logs').select('*').eq('user_id', userId).order('created_at', { ascending: true })
+        ]);
 
+        // 1. Weight Logs
+        if (weightData) {
+          const formatted = weightData.map(d => ({ date: d.date, value: parseFloat(d.value) }));
+          commit('SET_WEIGHT_LOG', formatted);
+        }
+
+        // 2. BF Logs
+        if (bfData) {
+          const formatted = bfData.map(d => ({ date: d.date, value: parseFloat(d.value) }));
+          commit('SET_BF_LOG', formatted);
+        }
+
+        // 3. Measurements
+        if (measData) {
+          commit('SET_MEASUREMENTS', measData);
+        }
+
+        // 4. Goals (from user_goals)
+        if (goalsData && goalsData.body_goals) {
+          commit('SET_GOALS', { ...goalsData.body_goals, skipSync: true });
+        }
+
+        // 5. Diet Goals & 6. Diet Logs
         const targets = dietGoals ? {
           calories: parseInt(dietGoals.calories) || 2000,
           protein: parseFloat(dietGoals.protein) || 150,
           carbs: parseFloat(dietGoals.carbs) || 200,
           fat: parseFloat(dietGoals.fat) || 67
         } : null;
-
-        // 6. Fetch Diet Logs (from diet_logs)
-        const { data: dietLogs } = await supabase
-          .from('diet_logs')
-          .select('*')
-          .eq('user_id', userId)
-          .order('created_at', { ascending: true });
 
         const logs = {};
         if (dietLogs) {
@@ -205,7 +205,7 @@ export default {
 
         commit('SET_DIET_DATA', { targets, logs });
       } catch (error) {
-        console.error('Error fetching diet data:', error);
+        console.error('Erro ao carregar dados corporais e de dieta:', error);
       }
     },
 

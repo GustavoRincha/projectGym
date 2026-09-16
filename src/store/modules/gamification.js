@@ -41,24 +41,16 @@ export default {
       }
       return current;
     },
-    levelProgress: (s) => {
-      let current = LEVELS[0];
-      for (const l of LEVELS) {
-        if (s.xp >= l.minXp) current = l;
-        else break;
-      }
+    levelProgress: (s, getters) => {
+      const current = getters.level;
       if (!current.nextXp) return 100; // Max level
       const prevXp = current.minXp;
       const range = current.nextXp - prevXp;
       const earned = s.xp - prevXp;
       return Math.min(100, Math.round((earned / range) * 100));
     },
-    xpToNextLevel: (s) => {
-      let current = LEVELS[0];
-      for (const l of LEVELS) {
-        if (s.xp >= l.minXp) current = l;
-        else break;
-      }
+    xpToNextLevel: (s, getters) => {
+      const current = getters.level;
       return current.nextXp ? current.nextXp - s.xp : 0;
     },
     allBadges: (state) => {
@@ -117,7 +109,10 @@ export default {
         }, 0);
       }, 0);
 
-      const daysSinceFirst = (new Date() - new Date(state.firstUsedAt)) / (1000 * 60 * 60 * 24);
+      const userCreationDate = rootState.auth?.user?.created_at || (sessions[0]?.date) || null;
+      const daysSinceFirst = userCreationDate
+        ? (new Date() - new Date(userCreationDate)) / (1000 * 60 * 60 * 24)
+        : 0;
 
       const conditions = {
         first_workout:  sessions.length >= 1,

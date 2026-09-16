@@ -21,10 +21,19 @@ const localStoragePlugin = store => {
 
   // Subscribe to mutations to save state
   store.subscribe((mutation, state) => {
+    // Ignora mutações de alta frequência do cronômetro para evitar gargalo de I/O contínuo
+    if (mutation.type === 'session/UPDATE_ELAPSED_TIME') {
+      return;
+    }
+
     // We shouldn't save auth session here, let supabase handle it
     const stateToSave = { ...state };
     delete stateToSave.auth; 
-    localStorage.setItem('gymtrack_state', JSON.stringify(stateToSave));
+    try {
+      localStorage.setItem('gymtrack_state', JSON.stringify(stateToSave));
+    } catch (err) {
+      console.warn('Erro ao salvar estado no localStorage:', err);
+    }
   });
 };
 

@@ -1,82 +1,75 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import store from '../store';
-import HomeView from '../views/HomeView.vue';
-import WorkoutsView from '../views/WorkoutsView.vue';
-import ActiveWorkoutView from '../views/ActiveWorkoutView.vue';
-import CreateWorkoutView from '../views/CreateWorkoutView.vue';
-import HistoryView from '../views/HistoryView.vue';
-import ExercisesView from '../views/ExercisesView.vue';
-import GoalsView from '../views/GoalsView.vue';
-import LoginView from '../views/LoginView.vue';
-import SuggestWorkoutView from '../views/SuggestWorkoutView.vue';
-import ProfileView from '../views/ProfileView.vue';
-
 const routes = [
   {
     path: '/login',
     name: 'Login',
-    component: LoginView,
+    component: () => import('../views/LoginView.vue'),
     meta: { requiresAuth: false }
   },
   {
     path: '/',
     name: 'Home',
-    component: HomeView,
+    component: () => import('../views/HomeView.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/workouts',
     name: 'Workouts',
-    component: WorkoutsView,
+    component: () => import('../views/WorkoutsView.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/workout/suggest',
     name: 'SuggestWorkout',
-    component: SuggestWorkoutView,
+    component: () => import('../views/SuggestWorkoutView.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/workout/create',
     name: 'CreateWorkout',
-    component: CreateWorkoutView,
+    component: () => import('../views/CreateWorkoutView.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/workout/edit/:id',
     name: 'EditWorkout',
-    component: CreateWorkoutView, // Reuses the same component in edit mode
+    component: () => import('../views/CreateWorkoutView.vue'), // Reuses the same component in edit mode
     meta: { requiresAuth: true }
   },
   {
     path: '/workout/:id',
     name: 'ActiveWorkout',
-    component: ActiveWorkoutView,
+    component: () => import('../views/ActiveWorkoutView.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/history',
     name: 'History',
-    component: HistoryView,
+    component: () => import('../views/HistoryView.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/exercises',
     name: 'Exercises',
-    component: ExercisesView,
+    component: () => import('../views/ExercisesView.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/goals',
     name: 'Goals',
-    component: GoalsView,
+    component: () => import('../views/GoalsView.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/profile',
     name: 'Profile',
-    component: ProfileView,
+    component: () => import('../views/ProfileView.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    redirect: '/'
   }
 ];
 
