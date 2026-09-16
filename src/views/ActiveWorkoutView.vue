@@ -1,8 +1,21 @@
 <template>
   <div class="active-workout pb-16">
-    <div class="d-flex align-center mb-6 mt-4">
-      <v-btn icon="mdi-arrow-left" variant="text" @click="cancelWorkout" class="mr-2"></v-btn>
-      <h1 class="text-h5 font-weight-bold text-truncate" v-if="routine">{{ routine.name }}</h1>
+    <div class="d-flex align-center justify-space-between mb-4 mt-4">
+      <div class="d-flex align-center overflow-hidden mr-2">
+        <v-btn icon="mdi-arrow-left" variant="text" @click="cancelWorkout" class="mr-1"></v-btn>
+        <h1 class="text-h5 font-weight-bold text-truncate" v-if="routine">{{ routine.name }}</h1>
+      </div>
+      <v-btn
+        color="primary"
+        variant="tonal"
+        size="small"
+        rounded="pill"
+        class="font-weight-bold text-none px-3 flex-shrink-0"
+        @click="finishWorkout"
+        prepend-icon="mdi-check"
+      >
+        Finalizar
+      </v-btn>
     </div>
 
     <v-alert
@@ -161,12 +174,16 @@
                     <span class="text-caption text-medium-emphasis ml-1">reps</span>
                   </div>
                 </v-col>
-                <v-col cols="2" class="text-center">
-                  <v-checkbox-btn
-                    v-model="ex.performed[setIndex - 1].completed"
-                    color="success"
-                    class="d-inline-flex"
-                  ></v-checkbox-btn>
+                <v-col cols="2" class="text-center d-flex justify-center align-center">
+                  <button
+                    type="button"
+                    class="set-check-btn"
+                    :class="{ 'completed': ex.performed[setIndex - 1]?.completed }"
+                    @click="toggleSet(ex, setIndex - 1)"
+                    :title="ex.performed[setIndex - 1]?.completed ? 'Série concluída' : 'Marcar como concluída'"
+                  >
+                    <v-icon :icon="ex.performed[setIndex - 1]?.completed ? 'mdi-check-bold' : 'mdi-check'" size="18"></v-icon>
+                  </button>
                 </v-col>
               </v-row>
 
@@ -483,17 +500,17 @@
 
     <!-- Scroll Picker Dialog -->
     <v-dialog v-model="showPicker" max-width="340" persistent scroll-strategy="none">
-      <v-card color="white" class="scroll-picker-card rounded-xl pa-4" style="color: #121212 !important;">
+      <v-card color="surface" class="scroll-picker-card rounded-xl pa-4">
         <!-- Header: Centered Exercise Name with Close button absolute on right -->
         <div class="position-relative d-flex justify-center align-center mb-4 pt-1" style="min-height: 48px;">
-          <div class="text-subtitle-1 font-weight-bold text-center text-dark-charcoal px-8" style="line-height: 1.3; color: #1C1C1E !important;">
-            {{ pickerExercise?.name }} <span class="text-grey-dark font-weight-medium">({{ pickerSetIndex + 1 }}/{{ pickerExercise?.setsMax }})</span>
+          <div class="text-subtitle-1 font-weight-bold text-center text-high-emphasis px-8" style="line-height: 1.3;">
+            {{ pickerExercise?.name }} <span class="text-medium-emphasis font-weight-medium">({{ pickerSetIndex + 1 }}/{{ pickerExercise?.setsMax }})</span>
           </div>
           <v-btn 
             icon="mdi-close" 
             variant="text" 
             size="small" 
-            color="black" 
+            color="medium-emphasis" 
             @click="showPicker = false"
             class="position-absolute"
             style="right: -8px; top: -8px;"
@@ -609,15 +626,129 @@
         <!-- Save Button -->
         <v-btn
           block
-          color="#00E676"
+          color="primary"
           height="48"
           rounded="pill"
-          class="text-none font-weight-bold text-white finish-picker-btn elevation-0"
+          class="text-none font-weight-bold elevation-1"
           @click="savePickerValue"
-          style="background: #00E676 !important; font-size: 15px;"
+          style="font-size: 15px;"
         >
-          SALVAR
+          Salvar
         </v-btn>
+      </v-card>
+    </v-dialog>
+
+    <!-- Floating Rest Timer Widget -->
+    <transition name="slide-up">
+      <div v-if="restTimerActive" class="floating-rest-timer-container">
+        <div class="floating-rest-timer">
+          <div class="d-flex align-center">
+            <v-progress-circular
+              :model-value="restProgress"
+              color="primary"
+              size="38"
+              width="3.5"
+              class="mr-3"
+            >
+              <v-icon icon="mdi-timer-sand" size="16" color="primary"></v-icon>
+            </v-progress-circular>
+            <div>
+              <div class="text-caption text-medium-emphasis font-weight-bold text-uppercase" style="font-size: 0.65rem !important; letter-spacing: 0.5px;">
+                Descanso
+              </div>
+              <div class="text-subtitle-1 font-weight-black text-high-emphasis" style="line-height: 1.1;">
+                {{ formatRestTime }}
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex align-center" style="gap: 6px;">
+            <v-btn
+              size="x-small"
+              variant="tonal"
+              color="primary"
+              class="font-weight-bold"
+              rounded="pill"
+              @click="addRestTime(30)"
+            >
+              +30s
+            </v-btn>
+            <v-btn
+              size="x-small"
+              variant="text"
+              color="medium-emphasis"
+              icon="mdi-close"
+              @click="stopRestTimer"
+              title="Pular descanso"
+            ></v-btn>
+          </div>
+        </div>
+      </div>
+    </transition>
+
+    <!-- Modal de Celebração de Conclusão do Treino -->
+    <v-dialog v-model="celebrationDialog" max-width="420" persistent>
+      <v-card color="surface" rounded="xl" class="pa-6 text-center glass-card position-relative overflow-hidden">
+        <div class="celebration-glow"></div>
+
+        <div class="mb-4 position-relative" style="z-index: 1;">
+          <v-avatar color="rgba(var(--v-theme-primary), 0.15)" size="80" class="mb-3 celebration-trophy">
+            <v-icon icon="mdi-trophy" color="primary" size="44"></v-icon>
+          </v-avatar>
+          <h2 class="text-h5 font-weight-black text-high-emphasis mb-1">Treino Concluído!</h2>
+          <p class="text-body-2 text-medium-emphasis">Excelente dedicação. Mais um passo rumo aos seus objetivos!</p>
+        </div>
+
+        <!-- Estatísticas do Treino -->
+        <div class="celebration-stats-grid mb-6 position-relative" style="z-index: 1;">
+          <div class="celebration-stat-card">
+            <v-icon icon="mdi-clock-outline" size="small" color="primary" class="mb-1"></v-icon>
+            <div class="text-h6 font-weight-black text-high-emphasis">{{ formattedTime }}</div>
+            <div class="text-caption text-medium-emphasis font-weight-bold">Duração</div>
+          </div>
+          <div class="celebration-stat-card">
+            <v-icon icon="mdi-weight-lifter" size="small" color="secondary" class="mb-1"></v-icon>
+            <div class="text-h6 font-weight-black text-high-emphasis">{{ sessionTotalVolumeFormatted }}</div>
+            <div class="text-caption text-medium-emphasis font-weight-bold">Volume Total</div>
+          </div>
+          <div class="celebration-stat-card">
+            <v-icon icon="mdi-check-circle-outline" size="small" color="success" class="mb-1"></v-icon>
+            <div class="text-h6 font-weight-black text-high-emphasis">{{ sessionCompletedSetsCount }}</div>
+            <div class="text-caption text-medium-emphasis font-weight-bold">Séries Feitas</div>
+          </div>
+          <div class="celebration-stat-card">
+            <v-icon icon="mdi-lightning-bolt" size="small" color="warning" class="mb-1"></v-icon>
+            <div class="text-h6 font-weight-black text-high-emphasis">+50 XP</div>
+            <div class="text-caption text-medium-emphasis font-weight-bold">Experiência</div>
+          </div>
+        </div>
+
+        <!-- Ações -->
+        <div class="d-flex flex-column position-relative" style="gap: 10px; z-index: 1;">
+          <v-btn
+            color="primary"
+            size="large"
+            rounded="pill"
+            block
+            class="font-weight-bold"
+            @click="goToHistoryAfterCelebration"
+            prepend-icon="mdi-history"
+          >
+            Ver no Histórico
+          </v-btn>
+          <v-btn
+            variant="tonal"
+            color="secondary"
+            size="large"
+            rounded="pill"
+            block
+            class="font-weight-bold"
+            @click="goToHomeAfterCelebration"
+            prepend-icon="mdi-home"
+          >
+            Voltar ao Início
+          </v-btn>
+        </div>
       </v-card>
     </v-dialog>
   </div>
@@ -1009,12 +1140,11 @@ const finishWorkout = async () => {
   await store.dispatch('gamification/checkAndUnlockBadges', { sessionData, streak });
 
   store.dispatch('session/clearSession');
+  stopRestTimer();
 
-  showMessage('Treino finalizado! +50 XP ganhos!', 'success');
-  
-  setTimeout(() => {
-    router.push('/history');
-  }, 1500);
+  showMessage('Treino finalizado com sucesso!', 'success');
+  // Abrir modal de celebração com estatísticas
+  celebrationDialog.value = true;
 };
 
 // State for Scroll Picker
@@ -1181,6 +1311,11 @@ const savePickerValue = () => {
       set.weight = newWeight;
       set.reps = newReps;
       set.completed = true;
+
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        try { navigator.vibrate(40); } catch (e) { /* ignore */ }
+      }
+      startRestTimer(60);
     }
   }
   showPicker.value = false;
@@ -1196,7 +1331,115 @@ const toggleAllSets = (ex) => {
   ex.performed.forEach(s => {
     s.completed = targetState;
   });
+  if (targetState) {
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      try { navigator.vibrate(40); } catch (e) { /* ignore */ }
+    }
+    startRestTimer(60);
+  }
 };
+
+const toggleSet = (ex, setIdx) => {
+  if (!ex.performed || !ex.performed[setIdx]) return;
+  const current = ex.performed[setIdx].completed;
+  ex.performed[setIdx].completed = !current;
+
+  if (!current) {
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      try { navigator.vibrate(40); } catch (e) { /* ignore */ }
+    }
+    startRestTimer(60);
+  }
+};
+
+// Rest Timer States & Logic
+const restTimerActive = ref(false);
+const restTimeLeft = ref(60);
+const restInitialTime = ref(60);
+let restInterval = null;
+
+const formatRestTime = computed(() => {
+  const mins = Math.floor(restTimeLeft.value / 60);
+  const secs = restTimeLeft.value % 60;
+  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+});
+
+const restProgress = computed(() => {
+  if (restInitialTime.value <= 0) return 0;
+  return Math.round(((restInitialTime.value - restTimeLeft.value) / restInitialTime.value) * 100);
+});
+
+const startRestTimer = (seconds = 60) => {
+  if (restInterval) {
+    clearInterval(restInterval);
+  }
+  restTimeLeft.value = seconds;
+  restInitialTime.value = seconds;
+  restTimerActive.value = true;
+
+  restInterval = setInterval(() => {
+    if (restTimeLeft.value > 1) {
+      restTimeLeft.value--;
+    } else {
+      stopRestTimer();
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        try { navigator.vibrate([120, 60, 120]); } catch (e) { /* ignore */ }
+      }
+    }
+  }, 1000);
+};
+
+const addRestTime = (seconds) => {
+  restTimeLeft.value += seconds;
+  restInitialTime.value += seconds;
+};
+
+const stopRestTimer = () => {
+  if (restInterval) {
+    clearInterval(restInterval);
+    restInterval = null;
+  }
+  restTimerActive.value = false;
+};
+
+// Celebration Dialog States & Navigation
+const celebrationDialog = ref(false);
+
+const sessionTotalVolume = computed(() => {
+  return (sessionExercises.value || []).reduce((total, ex) => {
+    return total + (ex.performed || []).reduce((sum, set) => {
+      return sum + (set.completed ? (Number(set.weight) || 0) * (Number(set.reps) || 0) : 0);
+    }, 0);
+  }, 0);
+});
+
+const sessionTotalVolumeFormatted = computed(() => {
+  const vol = sessionTotalVolume.value;
+  if (vol >= 1000) {
+    return `${(vol / 1000).toFixed(1)}t`;
+  }
+  return `${Math.round(vol)} kg`;
+});
+
+const sessionCompletedSetsCount = computed(() => {
+  return (sessionExercises.value || []).reduce((count, ex) => {
+    return count + (ex.performed || []).filter(s => s.completed).length;
+  }, 0);
+});
+
+const goToHistoryAfterCelebration = () => {
+  celebrationDialog.value = false;
+  router.push('/history');
+};
+
+const goToHomeAfterCelebration = () => {
+  celebrationDialog.value = false;
+  router.push('/');
+};
+
+onUnmounted(() => {
+  stopRestTimer();
+});
 </script>
 
 <style scoped>
@@ -1255,7 +1498,8 @@ const toggleAllSets = (ex) => {
 }
 .highlight-pill {
   height: 40px;
-  background-color: #F2F2F7;
+  background-color: rgba(var(--v-theme-on-surface), 0.07);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   border-radius: 12px;
   display: flex;
   align-items: center;
@@ -1271,7 +1515,7 @@ const toggleAllSets = (ex) => {
 .pill-label {
   font-size: 11px;
   font-weight: 800;
-  color: #8E8E93;
+  color: rgba(var(--v-theme-on-surface), 0.5);
   letter-spacing: 0.5px;
 }
 .wheel-picker-columns {
@@ -1314,15 +1558,15 @@ const toggleAllSets = (ex) => {
   scroll-snap-align: center;
   font-size: 18px;
   font-weight: 500;
-  color: #C7C7CC;
+  color: rgba(var(--v-theme-on-surface), 0.38);
   cursor: pointer;
-  transition: transform 0.15s ease, color 0.15s ease; /* Transiciona apenas transform e color para evitar reflows de layout */
+  transition: transform 0.15s ease, color 0.15s ease;
   user-select: none;
 }
 .wheel-item.active {
-  transform: scale(1.3); /* Usa transform em vez de font-size para evitar layout reflows durante o scroll */
+  transform: scale(1.3);
   font-weight: 800;
-  color: #1C1C1E;
+  color: rgb(var(--v-theme-primary));
 }
 .reps-item {
   text-align: left;
@@ -1339,12 +1583,125 @@ const toggleAllSets = (ex) => {
 .wheel-separator {
   font-size: 22px;
   font-weight: 800;
-  color: #1C1C1E;
+  color: rgb(var(--v-theme-on-surface));
   height: 40px;
   line-height: 34px;
   user-select: none;
   pointer-events: none;
   width: 12px;
   text-align: center;
+}
+
+/* Ergonomic Set Check Button */
+.set-check-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 2px solid rgba(var(--v-theme-on-surface), 0.2);
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  color: rgba(var(--v-theme-on-surface), 0.2);
+  outline: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.set-check-btn:hover {
+  border-color: rgb(var(--v-theme-success));
+  color: rgb(var(--v-theme-success));
+  background: rgba(var(--v-theme-success), 0.08);
+}
+.set-check-btn:active {
+  transform: scale(0.9);
+}
+.set-check-btn.completed,
+.set-check-btn--completed {
+  background: rgb(var(--v-theme-success)) !important;
+  border-color: rgb(var(--v-theme-success)) !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 2px 10px rgba(var(--v-theme-success), 0.4);
+}
+
+/* Floating Rest Timer Widget */
+.floating-rest-timer-container {
+  position: fixed;
+  bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  z-index: 1000;
+  pointer-events: none;
+  padding: 0 16px;
+}
+.floating-rest-timer {
+  pointer-events: auto;
+  min-width: 290px;
+  max-width: 400px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-radius: 9999px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: rgba(var(--v-theme-surface), 0.92);
+  border: 1px solid rgba(var(--v-theme-primary), 0.35);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+}
+.slide-up-enter-active,
+.slide-up-leave-active {
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.slide-up-enter-from,
+.slide-up-leave-to {
+  opacity: 0;
+  transform: translateY(24px) scale(0.96);
+}
+
+/* Celebration Dialog */
+.celebration-glow {
+  position: absolute;
+  top: -60px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 220px;
+  height: 220px;
+  background: radial-gradient(circle, rgba(var(--v-theme-primary), 0.25) 0%, rgba(var(--v-theme-primary), 0) 70%);
+  pointer-events: none;
+}
+.celebration-trophy {
+  animation: bounce-trophy 1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+@keyframes bounce-trophy {
+  0% {
+    transform: scale(0.3) rotate(-15deg);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.15) rotate(5deg);
+    opacity: 1;
+  }
+  75% {
+    transform: scale(0.95) rotate(-3deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+.celebration-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+.celebration-stat-card {
+  background: rgba(var(--v-theme-surface-variant), 0.35);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 12px;
+  padding: 12px 8px;
 }
 </style>

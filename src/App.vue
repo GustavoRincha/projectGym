@@ -209,13 +209,13 @@ body {
   font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 .main-content-container {
-  padding-bottom: 110px !important;
+  padding-bottom: calc(110px + env(safe-area-inset-bottom, 0px)) !important;
 }
 
 /* Custom Hotbar Styles */
 .custom-hotbar-container {
   position: fixed;
-  bottom: 20px;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
   left: 50%;
   transform: translateX(-50%);
   width: 92%;
