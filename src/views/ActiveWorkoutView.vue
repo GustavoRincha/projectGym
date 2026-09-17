@@ -656,7 +656,7 @@
         <div class="celebration-stats-grid mb-6 position-relative" style="z-index: 1;">
           <div class="celebration-stat-card">
             <v-icon icon="mdi-clock-outline" size="small" color="primary" class="mb-1"></v-icon>
-            <div class="text-h6 font-weight-black text-high-emphasis">{{ formattedTime }}</div>
+            <div class="text-h6 font-weight-black text-high-emphasis">{{ finalFormattedTime || formattedTime }}</div>
             <div class="text-caption text-medium-emphasis font-weight-bold">Duração</div>
           </div>
           <div class="celebration-stat-card">
@@ -1028,76 +1028,88 @@ const confirmCancel = () => {
   router.push('/');
 };
 
-const finishWorkout = async () => {
-  const exercisesToSave = JSON.parse(JSON.stringify(sessionExercises.value));
-  
-  // Append cardio objects
-  if (sessionCardios.value && sessionCardios.value.length > 0) {
-    sessionCardios.value.forEach((cardio, idx) => {
-      const finalDuration = (cardio.elapsedTime && cardio.elapsedTime > 0)
-        ? Math.ceil(cardio.elapsedTime / 60)
-        : (Number(cardio.duration) || 0);
+const finalFormattedTime = ref('');
 
+const finishWorkout = async () => {
+  try {
+    finalFormattedTime.value = formattedTime.value;
+
+    const exercisesToSave = JSON.parse(JSON.stringify(sessionExercises.value));
+    
+    // Append cardio objects
+    if (sessionCardios.value && sessionCardios.value.length > 0) {
+      sessionCardios.value.forEach((cardio, idx) => {
+        const finalDuration = (cardio.elapsedTime && cardio.elapsedTime > 0)
+          ? Math.ceil(cardio.elapsedTime / 60)
+          : (Number(cardio.duration) || 0);
+
+        exercisesToSave.push({
+          id: `session-cardio-meta-${idx}`,
+          name: cardio.name,
+          duration: finalDuration,
+          distance: cardio.distance || null,
+          isCardio: true,
+          performed: []
+        });
+      });
+    }
+
+    if (workoutNotes.value && workoutNotes.value.trim()) {
       exercisesToSave.push({
-        id: `session-cardio-meta-${idx}`,
-        name: cardio.name,
-        duration: finalDuration,
-        distance: cardio.distance || null,
-        isCardio: true,
+        id: 'session-notes-meta',
+        name: 'Observações do Treino',
+        notes: workoutNotes.value.trim(),
+        isNotes: true,
         performed: []
       });
-    });
+    }
+
+    const sessionData = {
+      routineId:    routine.value?.id || routineId.value,
+      routineName:  routine.value?.name || 'Treino',
+      date:         new Date().toISOString(),
+      duration:     elapsedTime.value,
+      exercises:    exercisesToSave
+    };
+
+    // Save session first so rootState has it for badge checking
+    await store.dispatch('history/saveSession', sessionData);
+
+    // Award XP for finishing a workout
+    await store.dispatch('gamification/addXp', 50);
+
+    // Calculate streak for badge checking
+    const sessions = store.getters['history/allSessions'];
+    const sessionDateSet = new Set(sessions.map(s => {
+      const d = new Date(s.date);
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    }));
+    let streak = 0;
+    const today = new Date();
+    for (let i = 0; i <= 365; i++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      if (sessionDateSet.has(key)) streak++;
+      else if (i > 0) break;
+    }
+
+    // Check and unlock badges
+    try {
+      await store.dispatch('gamification/checkAndUnlockBadges', { sessionData, streak });
+    } catch (e) {
+      console.warn('Erro ao checar badges:', e);
+    }
+
+    store.dispatch('session/clearSession');
+
+    showMessage('Treino finalizado com sucesso!', 'success');
+    // Abrir modal de celebração com estatísticas
+    celebrationDialog.value = true;
+  } catch (error) {
+    console.error('Erro ao finalizar treino:', error);
+    showMessage('Erro ao finalizar o treino. Tente novamente.', 'error');
   }
-
-  if (workoutNotes.value && workoutNotes.value.trim()) {
-    exercisesToSave.push({
-      id: 'session-notes-meta',
-      name: 'Observações do Treino',
-      notes: workoutNotes.value.trim(),
-      isNotes: true,
-      performed: []
-    });
-  }
-
-  const sessionData = {
-    routineId:    routine.value.id,
-    routineName:  routine.value.name,
-    date:         new Date().toISOString(),
-    duration:     elapsedTime.value,
-    exercises:    exercisesToSave
-  };
-
-  // Save session first so rootState has it for badge checking
-  await store.dispatch('history/saveSession', sessionData);
-
-  // Award XP for finishing a workout
-  await store.dispatch('gamification/addXp', 50);
-
-  // Calculate streak for badge checking
-  const sessions = store.getters['history/allSessions'];
-  const sessionDateSet = new Set(sessions.map(s => {
-    const d = new Date(s.date);
-    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-  }));
-  let streak = 0;
-  const today = new Date();
-  for (let i = 0; i <= 365; i++) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    if (sessionDateSet.has(key)) streak++;
-    else if (i > 0) break;
-  }
-
-  // Check and unlock badges
-  await store.dispatch('gamification/checkAndUnlockBadges', { sessionData, streak });
-
-  store.dispatch('session/clearSession');
-  stopRestTimer();
-
-  showMessage('Treino finalizado com sucesso!', 'success');
-  // Abrir modal de celebração com estatísticas
-  celebrationDialog.value = true;
 };
 
 // State for Scroll Picker
@@ -1268,7 +1280,6 @@ const savePickerValue = () => {
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
         try { navigator.vibrate(40); } catch (e) { /* ignore */ }
       }
-      startRestTimer(60);
     }
   }
   showPicker.value = false;
@@ -1338,9 +1349,6 @@ const goToHomeAfterCelebration = () => {
   router.push('/');
 };
 
-onUnmounted(() => {
-  stopRestTimer();
-});
 </script>
 
 <style scoped>
