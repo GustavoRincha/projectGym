@@ -638,53 +638,6 @@
       </v-card>
     </v-dialog>
 
-    <!-- Floating Rest Timer Widget -->
-    <transition name="slide-up">
-      <div v-if="restTimerActive" class="floating-rest-timer-container">
-        <div class="floating-rest-timer">
-          <div class="d-flex align-center">
-            <v-progress-circular
-              :model-value="restProgress"
-              color="primary"
-              size="38"
-              width="3.5"
-              class="mr-3"
-            >
-              <v-icon icon="mdi-timer-sand" size="16" color="primary"></v-icon>
-            </v-progress-circular>
-            <div>
-              <div class="text-caption text-medium-emphasis font-weight-bold text-uppercase" style="font-size: 0.65rem !important; letter-spacing: 0.5px;">
-                Descanso
-              </div>
-              <div class="text-subtitle-1 font-weight-black text-high-emphasis" style="line-height: 1.1;">
-                {{ formatRestTime }}
-              </div>
-            </div>
-          </div>
-
-          <div class="d-flex align-center" style="gap: 6px;">
-            <v-btn
-              size="x-small"
-              variant="tonal"
-              color="primary"
-              class="font-weight-bold"
-              rounded="pill"
-              @click="addRestTime(30)"
-            >
-              +30s
-            </v-btn>
-            <v-btn
-              size="x-small"
-              variant="text"
-              color="medium-emphasis"
-              icon="mdi-close"
-              @click="stopRestTimer"
-              title="Pular descanso"
-            ></v-btn>
-          </div>
-        </div>
-      </div>
-    </transition>
 
     <!-- Modal de Celebração de Conclusão do Treino -->
     <v-dialog v-model="celebrationDialog" max-width="420" persistent>
@@ -1335,7 +1288,6 @@ const toggleAllSets = (ex) => {
     if (typeof navigator !== 'undefined' && navigator.vibrate) {
       try { navigator.vibrate(40); } catch (e) { /* ignore */ }
     }
-    startRestTimer(60);
   }
 };
 
@@ -1348,58 +1300,7 @@ const toggleSet = (ex, setIdx) => {
     if (typeof navigator !== 'undefined' && navigator.vibrate) {
       try { navigator.vibrate(40); } catch (e) { /* ignore */ }
     }
-    startRestTimer(60);
   }
-};
-
-// Rest Timer States & Logic
-const restTimerActive = ref(false);
-const restTimeLeft = ref(60);
-const restInitialTime = ref(60);
-let restInterval = null;
-
-const formatRestTime = computed(() => {
-  const mins = Math.floor(restTimeLeft.value / 60);
-  const secs = restTimeLeft.value % 60;
-  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-});
-
-const restProgress = computed(() => {
-  if (restInitialTime.value <= 0) return 0;
-  return Math.round(((restInitialTime.value - restTimeLeft.value) / restInitialTime.value) * 100);
-});
-
-const startRestTimer = (seconds = 60) => {
-  if (restInterval) {
-    clearInterval(restInterval);
-  }
-  restTimeLeft.value = seconds;
-  restInitialTime.value = seconds;
-  restTimerActive.value = true;
-
-  restInterval = setInterval(() => {
-    if (restTimeLeft.value > 1) {
-      restTimeLeft.value--;
-    } else {
-      stopRestTimer();
-      if (typeof navigator !== 'undefined' && navigator.vibrate) {
-        try { navigator.vibrate([120, 60, 120]); } catch (e) { /* ignore */ }
-      }
-    }
-  }, 1000);
-};
-
-const addRestTime = (seconds) => {
-  restTimeLeft.value += seconds;
-  restInitialTime.value += seconds;
-};
-
-const stopRestTimer = () => {
-  if (restInterval) {
-    clearInterval(restInterval);
-    restInterval = null;
-  }
-  restTimerActive.value = false;
 };
 
 // Celebration Dialog States & Navigation
@@ -1625,43 +1526,6 @@ onUnmounted(() => {
   box-shadow: 0 2px 10px rgba(var(--v-theme-success), 0.4);
 }
 
-/* Floating Rest Timer Widget */
-.floating-rest-timer-container {
-  position: fixed;
-  bottom: calc(76px + env(safe-area-inset-bottom, 0px));
-  left: 0;
-  right: 0;
-  display: flex;
-  justify-content: center;
-  z-index: 1000;
-  pointer-events: none;
-  padding: 0 16px;
-}
-.floating-rest-timer {
-  pointer-events: auto;
-  min-width: 290px;
-  max-width: 400px;
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 16px;
-  border-radius: 9999px;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  background: rgba(var(--v-theme-surface), 0.92);
-  border: 1px solid rgba(var(--v-theme-primary), 0.35);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
-}
-.slide-up-enter-active,
-.slide-up-leave-active {
-  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.slide-up-enter-from,
-.slide-up-leave-to {
-  opacity: 0;
-  transform: translateY(24px) scale(0.96);
-}
 
 /* Celebration Dialog */
 .celebration-glow {

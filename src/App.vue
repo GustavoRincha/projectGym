@@ -204,9 +204,48 @@ const logout = async () => {
 
 <style>
 /* Global styles */
-body {
+html,
+body,
+#app {
   margin: 0;
+  padding: 0;
   font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  touch-action: pan-x pan-y;
+  -webkit-text-size-adjust: 100%;
+}
+
+*,
+*::before,
+*::after {
+  touch-action: pan-x pan-y;
+}
+
+/* Elementos clicáveis e interativos: desativa zoom de duplo toque nativo */
+a,
+button,
+input,
+select,
+textarea,
+[role="button"],
+.v-btn,
+.custom-input-box,
+.set-check-btn,
+.v-chip,
+.v-expansion-panel-title,
+.v-list-item,
+.cursor-pointer {
+  touch-action: manipulation;
+}
+
+/* Previne zoom automático do iOS Safari ao focar inputs */
+@media (max-width: 768px), (hover: none) and (pointer: coarse) {
+  input,
+  select,
+  textarea,
+  .v-field input,
+  .v-field textarea {
+    font-size: 16px !important;
+  }
 }
 .main-content-container {
   padding-bottom: calc(110px + env(safe-area-inset-bottom, 0px)) !important;
